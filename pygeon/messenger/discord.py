@@ -7,7 +7,6 @@ import hub
 import time
 import logging
 
-
 import colorlog
 
 from typing import TypedDict
@@ -19,13 +18,19 @@ handler.setFormatter(
     colorlog.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
 )
 
+
 class ReferencedMessage(TypedDict):
     type: int
     id: str
 
+
 class GatewayEvent(TypedDict):
     type: int
     referenced_message: ReferencedMessage
+    channel_id: str
+    content: str
+    id: str
+
 
 class WebsocketMessage(TypedDict):
     op: int
@@ -44,10 +49,12 @@ class Opcode(Enum):
     HELLO = 10
     HEARTBEAT_ACK = 11
 
+
 class EventName(Enum):
     MESSAGE_CREATE = "MESSAGE_CREATE"
     MESSAGE_UPDATE = "MESSAGE_UPDATE"
     MESSAGE_DELETE = "MESSAGE_DELETE"
+
 
 websocket.enableTrace(True)
 logger = colorlog.getLogger("Discord")
@@ -83,7 +90,7 @@ class Discord:
                 time.sleep(interval / 1000)
                 ws.send(json.dumps(payload))
 
-        message:WebsocketMessage = json.loads(message)
+        message: WebsocketMessage = json.loads(message)
         print(json.dumps(message, indent=4))
 
         opcode = message["op"]
