@@ -1,3 +1,4 @@
+from tkinter import EventType
 import websocket
 import threading
 import requests
@@ -6,13 +7,47 @@ import hub
 import time
 import logging
 
+
 import colorlog
+
+from typing import TypedDict
+
+from enum import Enum
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(
     colorlog.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
 )
 
+class ReferencedMessage(TypedDict):
+    type: int
+    id: str
+
+class GatewayEvent(TypedDict):
+    type: int
+    referenced_message: ReferencedMessage
+
+class WebsocketMessage(TypedDict):
+    op: int
+    t: str
+    s: int
+    d: GatewayEvent
+
+
+class Opcode(Enum):
+    DISPATCH = 0
+    HEARTBEAT = 1
+    IDENTIFY = 2
+    PRESENCE_UPDATE = 3
+    RESUME = 6
+    RECONNECT = 7
+    HELLO = 10
+    HEARTBEAT_ACK = 11
+
+class EventName(Enum):
+    MESSAGE_CREATE = "MESSAGE_CREATE"
+    MESSAGE_UPDATE = "MESSAGE_UPDATE"
+    MESSAGE_DELETE = "MESSAGE_DELETE"
 
 websocket.enableTrace(True)
 logger = colorlog.getLogger("Discord")
@@ -45,19 +80,20 @@ class Discord:
                 "d": None,
             }
             while True:
-                ws.send(json.dumps(payload))
                 time.sleep(interval / 1000)
                 ws.send(json.dumps(payload))
 
-        message = json.loads(message)
+        message:WebsocketMessage = json.loads(message)
+        print(json.dumps(message, indent=4))
 
-        match message["op"]:
+        opcode = message["op"]
+        match Opcode(opcode):
             # opcode 10 hello
-            case 10:
-                self.heartbeat_interval = message["d"]["heartbeat_interval"]
+            case Opcode.HELLO:
+                heartbeat_interval = message["d"]["heartbeat_interval"]
                 self.send_identity(ws)
                 threading.Thread(
-                    target=heartbeat, args=(ws, self.heartbeat_interval)
+                    target=heartbeat, args=(ws, heartbeat_interval)
                 ).start()
             case 2:
                 # TODO
@@ -66,18 +102,23 @@ class Discord:
                 # TODO
 
                 pass
-            case 0:
+            case Opcode.DISPATCH:
                 type = message["t"]
                 match type:
-                    case "MESSAGE_CREATE":
+                    case EventName.MESSAGE_CREATE:
                         logger.error("Message: %s", message["d"]["content"])
             case _:
                 pass
 
-    def send_heartbeat(self, ws):
+    def send_message():
         pass
 
-    def send_identity(self, ws):
+    def send_identity(self, ws: websocket.WebSocketApp) -> None:
+        payload = self.get_identity_payload()
+        print(payload)
+        ws.send(payload)
+
+    def get_identity_payload(self):
         payload = {
             "op": 2,
             "d": {
@@ -92,7 +133,7 @@ class Discord:
                 "intents": (1 << 15) + (1 << 9),
             },
         }
-        ws.send(json.dumps(payload))
+        return json.dumps(payload)
 
     def reconnect(self) -> None:
         # TODO
