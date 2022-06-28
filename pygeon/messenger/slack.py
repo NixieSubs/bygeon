@@ -1,3 +1,4 @@
+from calendar import c
 import websocket
 import threading
 import requests
@@ -6,6 +7,7 @@ import hub
 import logging
 
 import colorlog
+from typing import TypedDict
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(
@@ -17,6 +19,16 @@ websocket.enableTrace(True)
 logger = colorlog.getLogger("Slack")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
+
+class Event(TypedDict):
+    type: str
+    text: str
+    user: str
+    channel: str
+
+
+class Payload(TypedDict):
+    event: Event
 
 class Slack:
     def __init__(self, token: str) -> None:
