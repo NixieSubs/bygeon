@@ -3,15 +3,21 @@ import websocket
 import threading
 import requests
 import json
-import hub
 import time
 import logging
+from hub import Hub
+from message import Message
 
 import colorlog
 
 from typing import TypedDict
 
 from enum import Enum
+
+
+class Endpoints:
+    SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
+
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(
@@ -54,6 +60,7 @@ class EventName(Enum):
     MESSAGE_CREATE = "MESSAGE_CREATE"
     MESSAGE_UPDATE = "MESSAGE_UPDATE"
     MESSAGE_DELETE = "MESSAGE_DELETE"
+    READY = "READY"
 
 
 websocket.enableTrace(True)
@@ -65,9 +72,11 @@ logger.setLevel(logging.DEBUG)
 class Discord:
     url = "wss://gateway.discord.gg/?v=10&encoding=json"
 
-    def __init__(self, token: str) -> None:
+    def __init__(self, token: str, channel_id, hub: Hub) -> None:
         self.token = token
-        # self.hub = hub
+        self.channel_id = channel_id
+        self.hub = hub
+        self.received_messages = []
 
     def on_open(self, ws):
         print("opened")
@@ -91,7 +100,6 @@ class Discord:
                 ws.send(json.dumps(payload))
 
         message: WebsocketMessage = json.loads(message)
-        print(json.dumps(message, indent=4))
 
         opcode = message["op"]
         match Opcode(opcode):
@@ -111,14 +119,42 @@ class Discord:
                 pass
             case Opcode.DISPATCH:
                 type = message["t"]
-                match type:
+                match EventName(type):
                     case EventName.MESSAGE_CREATE:
-                        logger.error("Message: %s", message["d"]["content"])
+                        text = message["d"]["content"]
+                        logger.info("Message: %s", text)
+                        username = message["d"]["author"]["username"]
+
+                        m = Message(username, text)
+
+                        if not message["d"]["author"].get("bot"):
+                            self.hub.new_message(m, self)
+                            self.received_messages.append(message["d"]["id"])
             case _:
                 pass
 
-    def send_message():
-        pass
+    def send_message(self, message: Message) -> None:
+        payload = {
+            "content": message.text,
+            # "embeds": [
+            #    {
+            #        "author": message.author_username,
+            #        "title": "says",
+            #        "description": message.text,
+            #        "url": "https://discordapp.com",
+            #    }
+            # ],
+        }
+        headers = {
+            "Authorization": f"Bot {self.token}",
+        }
+        r = requests.post(
+            Endpoints.SEND_MESSAGE.format(self.channel_id),
+            data=payload,
+            headers=headers,
+        )
+        self.received_messages.append(r.json()["id"])
+        logger.error(r.text)
 
     def send_identity(self, ws: websocket.WebSocketApp) -> None:
         payload = self.get_identity_payload()

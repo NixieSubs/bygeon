@@ -1,24 +1,35 @@
-from calendar import c
 import websocket
 import threading
 import requests
 import json
-import hub
 import logging
+from hub import Hub
+
+from message import Message
 
 import colorlog
 from typing import TypedDict
+from enum import Enum
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(
     colorlog.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
 )
 
+class Endpoints:
+    SEND_MESSAGE = "https://slack.com/api/chat.postMessage"
+    USER_INFO = "https://slack.com/api/users.info"
+
+
+class Events(Enum):
+    MESSAGE = "MESSAGE"
+
 
 websocket.enableTrace(True)
 logger = colorlog.getLogger("Slack")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
+
 
 class Event(TypedDict):
     type: str
@@ -30,10 +41,13 @@ class Event(TypedDict):
 class Payload(TypedDict):
     event: Event
 
+
 class Slack:
-    def __init__(self, token: str) -> None:
-        self.token = token
-        # self.hub = hub
+    def __init__(self, app_token: str, bot_token : str, channel_id: str, hub: Hub) -> None:
+        self.app_token = app_token
+        self.bot_token = bot_token
+        self.channel_id = channel_id
+        self.hub = hub
 
     def on_open(self, ws):
         print("opened")
@@ -49,28 +63,36 @@ class Slack:
     def on_message(self, ws: websocket.WebSocketApp, message: str):
         message = json.loads(message)
 
-        match message['type']:
-            case 'hello':
+        match message["type"]:
+            case "hello":
                 pass
 
-            case 'disconnect':
+            case "disconnect":
                 self.reconnect()
             case _:
                 envelope_id = message["envelope_id"]
                 payload = message["payload"]
                 text = payload["event"]["text"]
+                channel_id = payload["event"]["channel"]
                 logger.info("Received message: {}".format(text))
-                print(message)
                 ws.send(json.dumps({"envelope_id": envelope_id, "payload": payload}))
 
+                username = self.get_username(payload["event"]["user"])
+                logger.error("get username:"+username)
+                self.hub.new_message(Message(username, text), self)
+
+    def get_username(self,id:str) ->str:
+        headers = self.get_headers(self.bot_token)
+        r = requests.get(Endpoints.USER_INFO+'?user='+id, headers=headers)
+        username = r.json()["user"]["name"]
+        return username
+
     def reconnect(self) -> None:
-        #TODO
+        # TODO
         pass
+
     def get_websocket_url(self) -> str:
-        header = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + self.token,
-        }
+        header = self.get_headers(self.app_token)
         r = requests.post("https://slack.com/api/apps.connections.open", headers=header)
         try:
             websocket_url = r.json()["url"]
@@ -81,6 +103,18 @@ class Slack:
         else:
             logger.info("Successfully got websocket url")
         return websocket_url
+
+    def send_message(self, message:Message ) -> None:
+        payload = {
+            "type": "message",
+            "username": message.author_username,
+            "channel": self.channel_id,
+            "text": message.text,
+        }
+        logger.error("Sending message: {}".format(message.text))
+        r = requests.post(Endpoints.SEND_MESSAGE, data = json.dumps(payload), headers=self.get_headers(self.bot_token))
+        logger.error(r.text)
+
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
@@ -93,5 +127,12 @@ class Slack:
         self.thread = threading.Thread(target=self.ws.run_forever)
         self.thread.daemon = True
         self.thread.start()
+
+    def get_headers(self, token) -> dict:
+        return {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token,
+        }
+
     def join(self) -> None:
         self.thread.join()
