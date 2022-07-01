@@ -30,6 +30,11 @@ class ReferencedMessage(TypedDict):
     type: int
     id: str
 
+class Author(TypedDict):
+    id: str
+    username: str
+    avatar: str
+    bot: bool
 
 class GatewayEvent(TypedDict):
     type: int
@@ -37,6 +42,7 @@ class GatewayEvent(TypedDict):
     channel_id: str
     content: str
     id: str
+    author: Author
 
 
 class WebsocketMessage(TypedDict):
@@ -125,7 +131,8 @@ class Discord(Messenger):
 
                         m = Message(username, text)
 
-                        if not message["d"]["author"].get("bot"):
+                        author = message["d"]["author"]
+                        if not author.get("bot"):
                             self.hub.new_message(m, self)
                             self.received_messages.append(message["d"]["id"])
             case _:
