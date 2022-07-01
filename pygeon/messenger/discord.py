@@ -128,7 +128,7 @@ class Discord(Messenger):
                 match EventName(type):
                     case EventName.MESSAGE_CREATE:
                         text = ws_message["d"]["content"]
-                        logger.info("Message: %s", text)
+                        logger.info("Recived message: %s", text)
                         username = ws_message["d"]["author"]["username"]
 
                         m = Message(username, text)
@@ -159,9 +159,10 @@ class Discord(Messenger):
             json=payload,
             headers=headers,
         )
-        self.received_messages.append(r.json()["id"])
-        logger.error(message.author_username + ": " + message.text)
-        logger.error(r.text)
+        if r.status_code != 200:
+            logger.error(r.text)
+        else:
+            logger.info(r.text)
 
     def send_identity(self, ws: websocket.WebSocketApp) -> None:
         payload = self.get_identity_payload()

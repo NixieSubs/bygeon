@@ -86,14 +86,14 @@ class Slack(Messenger):
         self.channel_id = channel_id
         self.hub = hub
 
-    def on_open(self, ws):
+    def on_open(self, ws) -> None:
         print("opened")
 
-    def on_error(self, ws, e):
+    def on_error(self, ws, e) -> None:
         print("error")
         print(e)
 
-    def on_close(self, ws, close_status_code, close_msg):
+    def on_close(self, ws, close_status_code, close_msg) -> None:
         print("closed")
         print(close_msg)
 
@@ -117,7 +117,7 @@ class Slack(Messenger):
                     # logger.info("got username:" + username)
                     self.hub.new_message(Message(username, text), self)
 
-    def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage):
+    def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
         payload = message["payload"]
         ws.send(json.dumps({"envelope_id": envelope_id, "payload": payload}))
@@ -126,7 +126,7 @@ class Slack(Messenger):
         headers = self.get_headers(self.bot_token)
         r = requests.get(Endpoints.USER_INFO + "?user=" + id, headers=headers)
         username = r.json()["user"]["name"]
-        logger.info(r.text)
+        logger.info(r.json())
         return username
 
     def reconnect(self) -> None:
@@ -139,7 +139,6 @@ class Slack(Messenger):
         try:
             websocket_url = r.json()["url"]
         except KeyError:
-            print(r.text)
             logger.error("Could not get websocket url")
             raise Exception("Could not get websocket url")
         else:
@@ -153,13 +152,16 @@ class Slack(Messenger):
             "channel": self.channel_id,
             "text": message.text,
         }
-        logger.error("Sending message: {}".format(message.text))
+        logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
             data=json.dumps(payload),
             headers=self.get_headers(self.bot_token),
         )
-        logger.error(r.text)
+        if r.status_code != 200:
+            logger.error(r.json())
+        else:
+            logger.info(r.json())
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
