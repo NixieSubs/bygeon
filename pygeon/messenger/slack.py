@@ -6,6 +6,7 @@ import logging
 from hub import Hub
 
 from message import Message
+from messenger import Messenger
 
 import colorlog
 from typing import List, TypedDict, Optional
@@ -74,7 +75,7 @@ class WSMessage(TypedDict):
     event: Event
 
 
-class Slack:
+class Slack(Messenger):
     def __init__(
         self, app_token: str, bot_token: str, channel_id: str, hub: Hub
     ) -> None:

@@ -7,6 +7,7 @@ import time
 import logging
 from hub import Hub
 from message import Message
+from messenger import Messenger
 
 import colorlog
 
@@ -69,7 +70,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
 
-class Discord:
+class Discord(Messenger):
     url = "wss://gateway.discord.gg/?v=10&encoding=json"
 
     def __init__(self, token: str, channel_id, hub: Hub) -> None:
@@ -150,10 +151,11 @@ class Discord:
         }
         r = requests.post(
             Endpoints.SEND_MESSAGE.format(self.channel_id),
-            data=payload,
+            json=payload,
             headers=headers,
         )
         self.received_messages.append(r.json()["id"])
+        logger.error(message.author_username + ": " + message.text)
         logger.error(r.text)
 
     def send_identity(self, ws: websocket.WebSocketApp) -> None:
