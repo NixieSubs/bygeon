@@ -147,7 +147,7 @@ class Slack(Messenger):
             logger.info("Successfully got websocket url")
         return websocket_url
 
-    def send_message(self, message: Message) -> None:
+    async def send_message(self, message: Message) -> None:
         payload = {
             "type": "message",
             "username": message.author_username,

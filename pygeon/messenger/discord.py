@@ -140,7 +140,7 @@ class Discord(Messenger):
             case _:
                 pass
 
-    def send_message(self, message: Message) -> None:
+    async def send_message(self, message: Message) -> None:
         payload = {
             "content": message.text,
             # "embeds": [
