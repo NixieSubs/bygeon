@@ -11,11 +11,11 @@ from hub import Hub
 from message import Message
 from .messenger import Messenger
 
-import colorlog
+import colorlog as cl
 
-handler = colorlog.StreamHandler()
+handler = cl.StreamHandler()
 handler.setFormatter(
-    colorlog.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
+    cl.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
 )
 
 
@@ -30,7 +30,7 @@ class Events(Enum):
 
 
 websocket.enableTrace(True)
-logger = colorlog.getLogger("Slack")
+logger = cl.getLogger("Slack")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
@@ -68,7 +68,6 @@ class Payload(TypedDict):
     ts: str
     team: str
     blocks: Block
-
 
 
 class WSMessage(TypedDict):

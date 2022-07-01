@@ -12,7 +12,7 @@ from hub import Hub
 from message import Message
 from .messenger import Messenger
 
-import colorlog
+import colorlog as cl
 
 
 class Endpoints:
@@ -20,9 +20,9 @@ class Endpoints:
     SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
 
 
-handler = colorlog.StreamHandler()
+handler = cl.StreamHandler()
 handler.setFormatter(
-    colorlog.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
+    cl.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
 )
 
 
@@ -74,7 +74,7 @@ class EventName(Enum):
 
 
 websocket.enableTrace(True)
-logger = colorlog.getLogger("Discord")
+logger = cl.getLogger("Discord")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
@@ -136,7 +136,6 @@ class Discord(Messenger):
                         author = ws_message["d"]["author"]
                         if not author.get("bot"):
                             self.hub.new_message(m, self)
-                            self.received_messages.append(ws_message["d"]["id"])
             case _:
                 pass
 

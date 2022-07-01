@@ -1,6 +1,6 @@
 import tomli
-from messenger import slack
-from messenger import discord
+from messenger.slack import Slack
+from messenger.discord import Discord
 from hub import Hub
 
 if __name__ == "__main__":
@@ -14,6 +14,9 @@ if __name__ == "__main__":
 
     hub = Hub()
 
-    hub.add_client(slack.Slack(slack_app_token, slack_bot_token, slack_channel_id,hub))
-    hub.add_client(discord.Discord(discord_token, discord_channel_id,hub))
+    slack = Slack(slack_app_token, slack_bot_token, slack_channel_id, hub)
+    discord = Discord(discord_token, discord_channel_id, hub)
+
+    hub.add_client(slack)
+    hub.add_client(discord)
     hub.start()
