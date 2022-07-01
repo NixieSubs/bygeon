@@ -30,11 +30,13 @@ class ReferencedMessage(TypedDict):
     type: int
     id: str
 
+
 class Author(TypedDict):
     id: str
     username: str
     avatar: str
     bot: bool
+
 
 class GatewayEvent(TypedDict):
     type: int
@@ -43,6 +45,7 @@ class GatewayEvent(TypedDict):
     content: str
     id: str
     author: Author
+    heartbeat_interval: int
 
 
 class WebsocketMessage(TypedDict):
@@ -81,7 +84,6 @@ class Discord(Messenger):
         self.token = token
         self.channel_id = channel_id
         self.hub = hub
-        self.received_messages = []
 
     def on_open(self, ws):
         print("opened")
@@ -104,13 +106,13 @@ class Discord(Messenger):
                 time.sleep(interval / 1000)
                 ws.send(json.dumps(payload))
 
-        message: WebsocketMessage = json.loads(message)
+        ws_message: WebsocketMessage = json.loads(message)
 
-        opcode = message["op"]
+        opcode = ws_message["op"]
         match Opcode(opcode):
             # opcode 10 hello
             case Opcode.HELLO:
-                heartbeat_interval = message["d"]["heartbeat_interval"]
+                heartbeat_interval = ws_message["d"]["heartbeat_interval"]
                 self.send_identity(ws)
                 threading.Thread(
                     target=heartbeat, args=(ws, heartbeat_interval)
@@ -122,19 +124,19 @@ class Discord(Messenger):
                 # TODO
                 pass
             case Opcode.DISPATCH:
-                type = message["t"]
+                type = ws_message["t"]
                 match EventName(type):
                     case EventName.MESSAGE_CREATE:
-                        text = message["d"]["content"]
+                        text = ws_message["d"]["content"]
                         logger.info("Message: %s", text)
-                        username = message["d"]["author"]["username"]
+                        username = ws_message["d"]["author"]["username"]
 
                         m = Message(username, text)
 
-                        author = message["d"]["author"]
+                        author = ws_message["d"]["author"]
                         if not author.get("bot"):
                             self.hub.new_message(m, self)
-                            self.received_messages.append(message["d"]["id"])
+                            self.received_messages.append(ws_message["d"]["id"])
             case _:
                 pass
 

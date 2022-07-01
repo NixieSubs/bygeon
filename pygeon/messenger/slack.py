@@ -70,10 +70,12 @@ class Payload(TypedDict):
     blocks: Block
 
 
+
 class WSMessage(TypedDict):
     envelope_id: str
     payload: Payload
     event: Event
+    type: str
 
 
 class Slack(Messenger):
