@@ -10,7 +10,7 @@ from typing import TypedDict
 
 from hub import Hub
 from message import Message
-from messenger import Messenger
+from .messenger import Messenger
 
 import colorlog
 
@@ -114,7 +114,6 @@ class Discord(Messenger):
                 pass
             case 1:
                 # TODO
-
                 pass
             case Opcode.DISPATCH:
                 type = message["t"]

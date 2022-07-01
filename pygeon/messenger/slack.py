@@ -9,7 +9,7 @@ from typing import List, TypedDict, Optional
 
 from hub import Hub
 from message import Message
-from messenger import Messenger
+from .messenger import Messenger
 
 import colorlog
 
