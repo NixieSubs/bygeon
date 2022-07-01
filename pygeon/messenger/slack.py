@@ -3,14 +3,15 @@ import threading
 import requests
 import json
 import logging
-from hub import Hub
 
+from enum import Enum
+from typing import List, TypedDict, Optional
+
+from hub import Hub
 from message import Message
 from messenger import Messenger
 
 import colorlog
-from typing import List, TypedDict, Optional
-from enum import Enum
 
 handler = colorlog.StreamHandler()
 handler.setFormatter(
@@ -112,7 +113,7 @@ class Slack(Messenger):
 
                 if payload["event"].get("subtype") != "bot_message":
                     username = self.get_username(payload["event"]["user"])
-                    #logger.info("got username:" + username)
+                    # logger.info("got username:" + username)
                     self.hub.new_message(Message(username, text), self)
 
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage):

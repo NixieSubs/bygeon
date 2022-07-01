@@ -1,22 +1,22 @@
-from tkinter import EventType
 import websocket
 import threading
 import requests
 import json
 import time
 import logging
+
+from enum import Enum
+from typing import TypedDict
+
 from hub import Hub
 from message import Message
 from messenger import Messenger
 
 import colorlog
 
-from typing import TypedDict
-
-from enum import Enum
-
 
 class Endpoints:
+    GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
     SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
 
 
@@ -71,8 +71,6 @@ logger.setLevel(logging.DEBUG)
 
 
 class Discord(Messenger):
-    url = "wss://gateway.discord.gg/?v=10&encoding=json"
-
     def __init__(self, token: str, channel_id, hub: Hub) -> None:
         self.token = token
         self.channel_id = channel_id
@@ -186,7 +184,7 @@ class Discord(Messenger):
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
-            self.url,
+            Endpoints.GATEWAY,
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
