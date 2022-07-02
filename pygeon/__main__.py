@@ -19,4 +19,5 @@ if __name__ == "__main__":
 
     hub.add_client(slack)
     hub.add_client(discord)
+    hub.init_database()
     hub.start()

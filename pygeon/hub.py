@@ -5,6 +5,8 @@ import asyncio
 
 from typing import List
 
+from pypika import Query, Column
+
 
 class Hub:
     def __init__(self) -> None:
@@ -30,3 +32,16 @@ class Hub:
     def record_message(self, message):
         # TODO
         ...
+
+    def init_database(self):
+        columns = tuple(
+            Column(type(c).__name__, "VARCHAR(255)", nullable=True)
+            for c in self.clients
+        )
+        create_table = Query.create_table("messages").columns(columns)
+        self.execute_sql(str(create_table))
+        print(create_table)
+
+    def execute_sql(self, query: str) -> None:
+        self.cur.execute(query)
+        self.con.commit()
