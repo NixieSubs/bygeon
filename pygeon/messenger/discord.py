@@ -38,6 +38,13 @@ class Author(TypedDict):
     bot: bool
 
 
+class EmbedAuthor(TypedDict):
+    name: str
+    url: str
+    icon_url: str
+    proxy_icon_url: str
+
+
 class GatewayEvent(TypedDict):
     type: int
     referenced_message: ReferencedMessage
@@ -141,15 +148,13 @@ class Discord(Messenger):
 
     async def send_message(self, message: Message) -> None:
         payload = {
-            "content": message.text,
-            # "embeds": [
-            #    {
-            #        "author": message.author_username,
-            #        "title": "says",
-            #        "description": message.text,
-            #        "url": "https://discordapp.com",
-            #    }
-            # ],
+            "embeds": [
+                {
+                    "author": {"name": message.author_username},
+                    "title": "says",
+                    "description": message.text,
+                }
+            ],
         }
         headers = {
             "Authorization": f"Bot {self.token}",
@@ -160,16 +165,18 @@ class Discord(Messenger):
             headers=headers,
         )
         if r.status_code != 200:
-            logger.error(r.text)
+            logger.error(r.json())
         else:
-            logger.info(r.text)
+            logger.info(r.json())
+
+        return r.json()["id"]
 
     def send_identity(self, ws: websocket.WebSocketApp) -> None:
         payload = self.get_identity_payload()
         print(payload)
         ws.send(payload)
 
-    def get_identity_payload(self):
+    def get_identity_payload(self) -> str:
         payload = {
             "op": 2,
             "d": {
