@@ -7,3 +7,6 @@ class Messenger(Protocol):
 
     def start(self) -> None:
         ...
+
+    def join(self) -> None:
+        ...
