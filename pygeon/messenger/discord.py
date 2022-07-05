@@ -104,7 +104,7 @@ class Discord(Messenger):
         print(close_msg)
 
     def on_message(self, ws: websocket.WebSocketApp, message: str):
-        def heartbeat(ws, interval):
+        def heartbeat(ws: websocket.WebSocketApp, interval: int):
             payload = {
                 "op": 1,
                 "d": None,
@@ -135,7 +135,7 @@ class Discord(Messenger):
                 match EventName(type):
                     case EventName.MESSAGE_CREATE:
                         text = ws_message["d"]["content"]
-                        logger.info("Recived message: %s", text)
+                        logger.info("Received message: %s", text)
                         username = ws_message["d"]["author"]["username"]
 
                         m = Message(username, text)
