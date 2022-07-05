@@ -43,6 +43,7 @@ class Event(TypedDict):
     channel: str
     event_ts: str
     channel_type: str
+    ts: str
 
 
 class Element(TypedDict):
@@ -114,8 +115,9 @@ class Slack(Messenger):
 
                 if payload["event"].get("subtype") != "bot_message":
                     username = self.get_username(payload["event"]["user"])
-                    # logger.info("got username:" + username)
-                    self.hub.new_message(Message(username, text), self)
+                    message_id = payload["event"]["ts"]
+                    m = Message(self.name, message_id, username, text)
+                    self.hub.new_message(m)
 
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
@@ -145,7 +147,7 @@ class Slack(Messenger):
             logger.info("Successfully got websocket url")
         return websocket_url
 
-    async def send_message(self, message: Message) -> Tuple[str, str]:
+    async def send_message(self, message: Message) -> Tuple[Message, str, str]:
         payload = {
             "type": "message",
             "username": message.author_username,
@@ -163,7 +165,7 @@ class Slack(Messenger):
             logger.error(r.json())
         else:
             logger.info(r.json())
-        return (type(self).__name__, response['ts'])
+        return (message, self.name, response['ts'])
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(

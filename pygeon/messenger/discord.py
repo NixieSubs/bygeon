@@ -137,16 +137,16 @@ class Discord(Messenger):
                         text = ws_message["d"]["content"]
                         logger.info("Received message: %s", text)
                         username = ws_message["d"]["author"]["username"]
-
-                        m = Message(username, text)
+                        orig_id = ws_message["d"]["id"]
+                        m = Message(self.name, orig_id, username, text)
 
                         author = ws_message["d"]["author"]
                         if not author.get("bot"):
-                            self.hub.new_message(m, self)
+                            self.hub.new_message(m)
             case _:
                 pass
 
-    async def send_message(self, message: Message) -> Tuple[str, str]:
+    async def send_message(self, message: Message) -> Tuple[Message, str, str]:
         payload = {
             "embeds": [
                 {
@@ -169,7 +169,9 @@ class Discord(Messenger):
         else:
             logger.info(r.json())
 
-        return (type(self).__name__, r.json()["id"])
+        message_id: str = r.json()["id"]
+
+        return (message, self.name, message_id)
 
     def send_identity(self, ws: websocket.WebSocketApp) -> None:
         payload = self.get_identity_payload()
