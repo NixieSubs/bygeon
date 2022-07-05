@@ -6,7 +6,7 @@ import time
 import logging
 
 from enum import Enum
-from typing import TypedDict
+from typing import TypedDict, Tuple
 
 from hub import Hub
 from message import Message
@@ -146,7 +146,7 @@ class Discord(Messenger):
             case _:
                 pass
 
-    async def send_message(self, message: Message) -> None:
+    async def send_message(self, message: Message) -> Tuple[str, str]:
         payload = {
             "embeds": [
                 {
@@ -169,7 +169,7 @@ class Discord(Messenger):
         else:
             logger.info(r.json())
 
-        return r.json()["id"]
+        return (type(self).__name__, r.json()["id"])
 
     def send_identity(self, ws: websocket.WebSocketApp) -> None:
         payload = self.get_identity_payload()

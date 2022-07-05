@@ -5,7 +5,7 @@ import json
 import logging
 
 from enum import Enum
-from typing import List, TypedDict, Optional
+from typing import List, TypedDict, Optional, Tuple
 
 from hub import Hub
 from message import Message
@@ -145,7 +145,7 @@ class Slack(Messenger):
             logger.info("Successfully got websocket url")
         return websocket_url
 
-    async def send_message(self, message: Message) -> None:
+    async def send_message(self, message: Message) -> Tuple[str, str]:
         payload = {
             "type": "message",
             "username": message.author_username,
@@ -158,10 +158,12 @@ class Slack(Messenger):
             data=json.dumps(payload),
             headers=self.get_headers(self.bot_token),
         )
+        response = r.json()
         if r.status_code != 200:
             logger.error(r.json())
         else:
             logger.info(r.json())
+        return (type(self).__name__, response['ts'])
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
