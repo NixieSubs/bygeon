@@ -1,5 +1,6 @@
 import sqlite3
 from messenger.messenger import Messenger
+from message import Message
 
 import asyncio
 
@@ -20,7 +21,7 @@ class Hub:
         for client in self.clients:
             client.join()
 
-    def new_message(self, message, source):
+    def new_message(self, message: Message, source: Messenger):
         for client in self.clients:
             if client is source:
                 continue
