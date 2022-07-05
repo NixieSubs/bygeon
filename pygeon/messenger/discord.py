@@ -1,7 +1,7 @@
 import websocket
 import threading
 import requests
-import json
+import orjson
 import time
 import logging
 
@@ -22,7 +22,7 @@ class Endpoints:
 
 handler = cl.StreamHandler()
 handler.setFormatter(
-    cl.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
+    cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
 )
 
 
@@ -111,9 +111,9 @@ class Discord(Messenger):
             }
             while True:
                 time.sleep(interval / 1000)
-                ws.send(json.dumps(payload))
+                ws.send(orjson.dumps(payload))
 
-        ws_message: WebsocketMessage = json.loads(message)
+        ws_message: WebsocketMessage = orjson.loads(message)
 
         opcode = ws_message["op"]
         match Opcode(opcode):
@@ -176,7 +176,7 @@ class Discord(Messenger):
         print(payload)
         ws.send(payload)
 
-    def get_identity_payload(self) -> str:
+    def get_identity_payload(self) -> bytes:
         payload = {
             "op": 2,
             "d": {
@@ -191,7 +191,7 @@ class Discord(Messenger):
                 "intents": (1 << 15) + (1 << 9),
             },
         }
-        return json.dumps(payload)
+        return orjson.dumps(payload)
 
     def reconnect(self) -> None:
         # TODO

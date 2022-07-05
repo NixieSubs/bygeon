@@ -1,7 +1,7 @@
 import websocket
 import threading
 import requests
-import json
+import orjson
 import logging
 
 from enum import Enum
@@ -15,7 +15,7 @@ import colorlog as cl
 
 handler = cl.StreamHandler()
 handler.setFormatter(
-    cl.ColoredFormatter("%(log_color)s%(levelname)s:%(name)s:%(message)s")
+    cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
 )
 
 
@@ -98,7 +98,7 @@ class Slack(Messenger):
         print(close_msg)
 
     def on_message(self, ws: websocket.WebSocketApp, message: str):
-        ws_message: WSMessage = json.loads(message)
+        ws_message: WSMessage = orjson.loads(message)
 
         match ws_message["type"]:
             case "hello":
@@ -120,7 +120,7 @@ class Slack(Messenger):
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
         payload = message["payload"]
-        ws.send(json.dumps({"envelope_id": envelope_id, "payload": payload}))
+        ws.send(orjson.dumps({"envelope_id": envelope_id, "payload": payload}))
 
     def get_username(self, id: str) -> str:
         headers = self.get_headers(self.bot_token)
@@ -155,7 +155,7 @@ class Slack(Messenger):
         logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
-            data=json.dumps(payload),
+            data=orjson.dumps(payload),
             headers=self.get_headers(self.bot_token),
         )
         response = r.json()
