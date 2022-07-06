@@ -1,4 +1,4 @@
-from typing import Protocol, Tuple
+from typing import Protocol
 from message import Message
 
 
@@ -7,7 +7,7 @@ class Messenger(Protocol):
     def name(self) -> str:
         return self.__class__.__name__
 
-    async def send_message(self, message: Message) -> Tuple[Message, str, str]:
+    async def send_message(self, message: Message) -> None:
         ...
 
     async def reply_to_message(self, message: str, reply_to: str) -> None:

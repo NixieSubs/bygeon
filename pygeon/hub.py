@@ -3,9 +3,8 @@ from messenger.messenger import Messenger
 from message import Message
 
 import asyncio
-from asyncio import Task
 
-from typing import List, Tuple
+from typing import List
 
 from pypika import Query, Column, Table
 
@@ -31,8 +30,7 @@ class Hub:
 
         for client in self.clients:
             if client.name != message.origin:
-                task = asyncio.create_task(client.send_message(message))
-                task.add_done_callback(self.update_entry)
+                asyncio.run(client.send_message(message))
 
     def new_entry(self, message: Message) -> None:
         origin_id = message.origin_id
@@ -41,11 +39,12 @@ class Hub:
         q = Query.into(self.table).insert(*tuple(entry))
         self.execute_sql(str(q))
 
-    def update_entry(self, task: Task[Tuple[Message, str, str]]) -> None:
-        result = task.result()
-        m, c, mid = result
-        q = Query.update(self.table).set(c, mid).where(m.origin == m.origin_id)
-        self.execute_sql(str(q))
+    # FIXME
+    def update_entry(self, message: Message, sent_messenger: str, sent_id: str) -> None: # noqa
+        m = message
+        sql = f"UPDATE \"messages\" SET \"{sent_messenger}\" = '{sent_id}' WHERE \"{message.origin}\" = '{m.origin_id}'" # noqa
+        # q = Query.update(self.table).set(sent_messenger, sent_id).where(m.origin == m.origin_id) # noqa
+        self.execute_sql(sql)
 
     def add_client(self, client):
         self.clients.append(client)

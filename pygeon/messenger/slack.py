@@ -5,7 +5,7 @@ import orjson
 import logging
 
 from enum import Enum
-from typing import List, TypedDict, Optional, Tuple
+from typing import List, TypedDict, Optional
 
 from hub import Hub
 from message import Message
@@ -104,7 +104,6 @@ class Slack(Messenger):
         match ws_message["type"]:
             case "hello":
                 pass
-
             case "disconnect":
                 self.reconnect()
             case _:
@@ -147,7 +146,7 @@ class Slack(Messenger):
             logger.info("Successfully got websocket url")
         return websocket_url
 
-    async def send_message(self, message: Message) -> Tuple[Message, str, str]:
+    async def send_message(self, message: Message) -> None:
         payload = {
             "type": "message",
             "username": message.author_username,
@@ -165,7 +164,8 @@ class Slack(Messenger):
             logger.error(r.json())
         else:
             logger.info(r.json())
-        return (message, self.name, response['ts'])
+
+        self.hub.update_entry(message, self.name, response['ts'])
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
