@@ -49,9 +49,19 @@ class Hub:
     def add_client(self, client):
         self.clients.append(client)
 
-    def record_message(self, message):
-        # TODO
-        ...
+    def reply_message(self, message: Message, reply_to: str) -> None:
+        self.new_entry(message)
+        orig = message.origin
+        sql = f"SELECT * FROM \"messages\" WHERE \"{orig}\" = '{reply_to}'"
+        cur = self.cur.execute(sql)
+        for row in cur:
+            for i, client in enumerate(self.clients):
+                if client.name != orig:
+                    asyncio.run(client.send_reply(message, row[i]))
+        print(self.cur.execute(sql))
+
+
+
 
     def init_database(self):
         columns = tuple(

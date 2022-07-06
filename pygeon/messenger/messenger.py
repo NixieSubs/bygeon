@@ -10,7 +10,7 @@ class Messenger(Protocol):
     async def send_message(self, message: Message) -> None:
         ...
 
-    async def reply_to_message(self, message: str, reply_to: str) -> None:
+    async def send_reply(self, message: Message, ref_id: str) -> None:
         ...
 
     def start(self) -> None:

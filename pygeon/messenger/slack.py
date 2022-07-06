@@ -43,6 +43,7 @@ class Event(TypedDict):
     channel: str
     event_ts: str
     channel_type: str
+    thread_ts: str
     ts: str
 
 
@@ -117,6 +118,10 @@ class Slack(Messenger):
                     message_id = payload["event"]["ts"]
                     m = Message(self.name, message_id, username, text)
                     self.hub.new_message(m)
+                    if payload["event"].get("thread_ts") is not None:
+                        ref_id = payload["event"]["thread_ts"]
+                        self.hub.reply_message(m, ref_id)
+
 
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
@@ -145,6 +150,29 @@ class Slack(Messenger):
         else:
             logger.info("Successfully got websocket url")
         return websocket_url
+
+    async def send_reply(self, message:Message, ref_id:str) -> None:
+        payload = {
+            "type": "message",
+            "username": message.author_username,
+            "channel": self.channel_id,
+            "text": message.text,
+            "thread_ts": ref_id,
+        }
+        logger.info("Sending message: {}".format(message.text))
+        r = requests.post(
+            Endpoints.POST_MESSAGE,
+            data=orjson.dumps(payload),
+            headers=self.get_headers(self.bot_token),
+        )
+        response = r.json()
+        if r.status_code != 200:
+            logger.error(r.json())
+        else:
+            logger.info(r.json())
+
+        self.hub.update_entry(message, self.name, response['ts'])
+        pass
 
     async def send_message(self, message: Message) -> None:
         payload = {

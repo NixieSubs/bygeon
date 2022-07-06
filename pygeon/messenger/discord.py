@@ -142,9 +142,42 @@ class Discord(Messenger):
 
                         author = ws_message["d"]["author"]
                         if not author.get("bot"):
-                            self.hub.new_message(m)
+                            if ws_message["d"]["referenced_message"] is not None:
+                                referenced_id = ws_message["d"]["referenced_message"]["id"]
+                                self.hub.reply_message(m, referenced_id)
+                            else:
+                                self.hub.new_message(m)
             case _:
                 pass
+
+    async def send_reply(self, message: Message, ref_id: str) -> None:
+        payload = {
+            "embeds": [
+                {
+                    "author": {"name": message.author_username},
+                    "title": "says",
+                    "description": message.text,
+                }
+            ],
+            "message_reference": {
+                "message_id": ref_id,
+            }
+        }
+        headers = {
+            "Authorization": f"Bot {self.token}",
+        }
+        r = requests.post(
+            Endpoints.SEND_MESSAGE.format(self.channel_id),
+            json=payload,
+            headers=headers,
+        )
+        if r.status_code != 200:
+            logger.error(r.json())
+        else:
+            logger.info(r.json())
+        message_id: str = r.json()["id"]
+        self.hub.update_entry(message, self.name, message_id)
+        ...
 
     async def send_message(self, message: Message) -> None:
         payload = {
