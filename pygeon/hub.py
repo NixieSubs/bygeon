@@ -60,9 +60,6 @@ class Hub:
                     asyncio.run(client.send_reply(message, row[i]))
         print(self.cur.execute(sql))
 
-
-
-
     def init_database(self):
         columns = tuple(
             Column(s, "VARCHAR(255)", nullable=True) for s in self.client_names
