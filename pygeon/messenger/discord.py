@@ -19,6 +19,7 @@ import colorlog as cl
 class Endpoints:
     GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
     SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
+    DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
 
 
 handler = cl.StreamHandler()
@@ -90,6 +91,10 @@ class Discord(Messenger):
         self.channel_id = channel_id
         self.hub = hub
 
+    @property
+    def headers(self):
+        return {"Authorization": f"Bot {self.token}"}
+
     def on_open(self, ws):
         print("opened")
 
@@ -140,12 +145,26 @@ class Discord(Messenger):
                         author = ws_message["d"]["author"]
                         if not author.get("bot"):
                             if ws_message["d"]["referenced_message"] is not None:
-                                referenced_id = ws_message["d"]["referenced_message"]["id"]
+                                referenced_id = ws_message["d"]["referenced_message"][
+                                    "id"
+                                ]
                                 self.hub.reply_message(m, referenced_id)
                             else:
                                 self.hub.new_message(m)
+                    case EventName.MESSAGE_DELETE:
+                        message_id = ws_message["d"]["id"]
+                        self.hub.recall_message(self.name, message_id)
+
             case _:
                 pass
+
+    async def recall_message(self, message_id: str) -> None:
+        r = requests.delete(
+            Endpoints.DELETE_MESSAGE.format(self.channel_id, message_id),
+            headers=self.headers,
+        )
+        logger.info("Trying to recall: " + message_id)
+        logger.info(r.json())
 
     async def send_reply(self, message: Message, ref_id: str) -> None:
         payload = {
@@ -158,15 +177,12 @@ class Discord(Messenger):
             ],
             "message_reference": {
                 "message_id": ref_id,
-            }
-        }
-        headers = {
-            "Authorization": f"Bot {self.token}",
+            },
         }
         r = requests.post(
             Endpoints.SEND_MESSAGE.format(self.channel_id),
             json=payload,
-            headers=headers,
+            headers=self.headers,
         )
         if r.status_code != 200:
             logger.error(r.json())
@@ -185,13 +201,10 @@ class Discord(Messenger):
                 }
             ],
         }
-        headers = {
-            "Authorization": f"Bot {self.token}",
-        }
         r = requests.post(
             Endpoints.SEND_MESSAGE.format(self.channel_id),
             json=payload,
-            headers=headers,
+            headers=self.headers,
         )
         if r.status_code != 200:
             logger.error(r.json())

@@ -18,7 +18,7 @@ handler = cl.StreamHandler()
 handler.setFormatter(
     cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
 )
-logger = cl.getLogger("Slack")
+logger = cl.getLogger("CQHttp")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
 
@@ -26,6 +26,7 @@ logger.setLevel(logging.DEBUG)
 class PostType(Enum):
     META_EVENT = "meta_event"
     MESSAGE = "message"
+    NOTICE = "notice"
 
 
 class MetaEventType(Enum):
@@ -69,6 +70,10 @@ class CQHttp(Messenger):
     def api_url(self) -> str:
         return "http://localhost:8081/send_group_msg"
 
+    @property
+    def recall_url(self) -> str:
+        return "http://localhost:8081/delete_msg"
+
     def __init__(self, group_id: str, hub: Hub) -> None:
         self.group_id = int(group_id)
         self.hub = hub
@@ -107,8 +112,17 @@ class CQHttp(Messenger):
                     self.hub.reply_message(m, ref_id)
                 else:
                     self.hub.new_message(m)
-
-        ...
+            case PostType.NOTICE:
+                recalled_id = ws_message["message_id"]
+                self.hub.recall_message(self.name, recalled_id)
+                ...
+    async def recall_message(self, message_id: str) -> None:
+        payload = {
+            "message_id": message_id,
+        }
+        r = requests.post(self.recall_url, json=payload)
+        logger.info("Trying to recall: " + message_id)
+        logger.info(r.json())
 
     def reconnect(self) -> None:
         ...

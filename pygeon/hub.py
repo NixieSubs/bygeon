@@ -60,6 +60,15 @@ class Hub:
                     asyncio.run(client.send_reply(message, row[i]))
         print(self.cur.execute(sql))
 
+    def recall_message(self, orig: str, recalled_id: str) -> None:
+        sql = f"SELECT * FROM \"messages\" WHERE \"{orig}\" = '{recalled_id}'"
+        cur = self.cur.execute(sql)
+        for row in cur:
+            for i, client in enumerate(self.clients):
+                if client.name != orig:
+                    asyncio.run(client.recall_message(row[i]))
+
+
     def init_database(self):
         columns = tuple(
             Column(s, "VARCHAR(255)", nullable=True) for s in self.client_names

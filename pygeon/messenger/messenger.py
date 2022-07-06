@@ -13,8 +13,13 @@ class Messenger(Protocol):
     async def send_reply(self, message: Message, ref_id: str) -> None:
         ...
 
+    async def recall_message(self, message_id: str) -> None:
+        ...
+
     def start(self) -> None:
         ...
 
     def join(self) -> None:
         ...
+
+

@@ -5,7 +5,7 @@ import orjson
 import logging
 
 from enum import Enum
-from typing import List, TypedDict, Optional
+from typing import List, TypedDict
 
 from hub import Hub
 from message import Message
@@ -26,6 +26,7 @@ class Endpoints:
     POST_MESSAGE = "https://slack.com/api/chat.postMessage"
     USER_INFO = "https://slack.com/api/users.info"
     CONNECTIONS_OPEN = "https://slack.com/api/apps.connections.open"
+    CHAT_DELETE = "https://slack.com/api/chat.delete"
 
 
 class Events(Enum):
@@ -34,7 +35,7 @@ class Events(Enum):
 
 class Event(TypedDict):
     type: str
-    subtype: Optional[str]
+    subtype: str
     text: str
     user: str
     channel: str
@@ -42,6 +43,7 @@ class Event(TypedDict):
     channel_type: str
     thread_ts: str
     ts: str
+    deleted_ts: str
 
 
 class Element(TypedDict):
@@ -106,13 +108,17 @@ class Slack(Messenger):
                 self.reconnect()
             case _:
                 payload = ws_message["payload"]
-                text = payload["event"]["text"]
-                logger.info("Received message: {}".format(text))
                 self.send_ack(ws, ws_message)
+                subtype = payload["event"].get("subtype")
+                if subtype == "message_deleted":
 
-                if payload["event"].get("subtype") != "bot_message":
+                    deleted_ts = payload["event"]["deleted_ts"]
+                    logger.info("Deleted message: {}".format(deleted_ts))
+                    self.hub.recall_message(self.name, deleted_ts)
+                elif subtype != "bot_message":
                     username = self.get_username(payload["event"]["user"])
                     message_id = payload["event"]["ts"]
+                    text = payload["event"]["text"]
                     m = Message(self.name, message_id, username, text)
 
                     if payload["event"].get("thread_ts") is not None:
@@ -177,6 +183,20 @@ class Slack(Messenger):
 
         self.hub.update_entry(message, self.name, response["ts"])
 
+    async def recall_message(self, message_id: str) -> None:
+        payload = {
+            "token": self.bot_token,
+            "channel": self.channel_id,
+            "ts": message_id,
+        }
+        r = requests.post(
+            Endpoints.CHAT_DELETE,
+            json=payload,
+            headers=self.get_headers(self.bot_token),
+        )
+        logger.info("Trying to recall: " + message_id)
+        logger.info(r.json())
+
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
             self.get_websocket_url(),
@@ -189,7 +209,7 @@ class Slack(Messenger):
         self.thread.daemon = True
         self.thread.start()
 
-    def get_message_payload(self, message: Message, ref_id:str = None) -> bytes:
+    def get_message_payload(self, message: Message, ref_id: str = None) -> bytes:
         payload = {
             "type": "message",
             "username": message.author_username,
