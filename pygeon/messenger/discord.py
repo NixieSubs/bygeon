@@ -1,4 +1,5 @@
 import websocket
+from websocket import WebSocketApp as WSApp
 import threading
 import requests
 import orjson
@@ -24,6 +25,9 @@ handler = cl.StreamHandler()
 handler.setFormatter(
     cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
 )
+logger = cl.getLogger("Discord")
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class ReferencedMessage(TypedDict):
@@ -80,12 +84,6 @@ class EventName(Enum):
     READY = "READY"
 
 
-websocket.enableTrace(True)
-logger = cl.getLogger("Discord")
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-
-
 class Discord(Messenger):
     def __init__(self, token: str, channel_id, hub: Hub) -> None:
         self.token = token
@@ -103,8 +101,8 @@ class Discord(Messenger):
         print("closed")
         print(close_msg)
 
-    def on_message(self, ws: websocket.WebSocketApp, message: str):
-        def heartbeat(ws: websocket.WebSocketApp, interval: int):
+    def on_message(self, ws: WSApp, message: str):
+        def heartbeat(ws: WSApp, interval: int):
             payload = {
                 "op": 1,
                 "d": None,
@@ -117,7 +115,6 @@ class Discord(Messenger):
 
         opcode = ws_message["op"]
         match Opcode(opcode):
-            # opcode 10 hello
             case Opcode.HELLO:
                 heartbeat_interval = ws_message["d"]["heartbeat_interval"]
                 self.send_identity(ws)
@@ -177,7 +174,6 @@ class Discord(Messenger):
             logger.info(r.json())
         message_id: str = r.json()["id"]
         self.hub.update_entry(message, self.name, message_id)
-        ...
 
     async def send_message(self, message: Message) -> None:
         payload = {
@@ -205,7 +201,7 @@ class Discord(Messenger):
         message_id: str = r.json()["id"]
         self.hub.update_entry(message, self.name, message_id)
 
-    def send_identity(self, ws: websocket.WebSocketApp) -> None:
+    def send_identity(self, ws: WSApp) -> None:
         payload = self.get_identity_payload()
         print(payload)
         ws.send(payload)
@@ -232,7 +228,7 @@ class Discord(Messenger):
         pass
 
     def start(self) -> None:
-        self.ws = websocket.WebSocketApp(
+        self.ws = WSApp(
             Endpoints.GATEWAY,
             on_open=self.on_open,
             on_message=self.on_message,

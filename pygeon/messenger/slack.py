@@ -17,6 +17,9 @@ handler = cl.StreamHandler()
 handler.setFormatter(
     cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
 )
+logger = cl.getLogger("Slack")
+logger.addHandler(handler)
+logger.setLevel(logging.DEBUG)
 
 
 class Endpoints:
@@ -27,12 +30,6 @@ class Endpoints:
 
 class Events(Enum):
     MESSAGE = "MESSAGE"
-
-
-websocket.enableTrace(True)
-logger = cl.getLogger("Slack")
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
 
 
 class Event(TypedDict):
@@ -124,7 +121,6 @@ class Slack(Messenger):
                     else:
                         self.hub.new_message(m)
 
-
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
         payload = message["payload"]
@@ -153,40 +149,24 @@ class Slack(Messenger):
             logger.info("Successfully got websocket url")
         return websocket_url
 
-    async def send_reply(self, message:Message, ref_id:str) -> None:
-        payload = {
-            "type": "message",
-            "username": message.author_username,
-            "channel": self.channel_id,
-            "text": message.text,
-            "thread_ts": ref_id,
-        }
+    async def send_reply(self, message: Message, ref_id: str) -> None:
         logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
-            data=orjson.dumps(payload),
+            data=self.get_message_payload(message, ref_id),
             headers=self.get_headers(self.bot_token),
         )
         response = r.json()
-        if r.status_code != 200:
-            logger.error(r.json())
-        else:
-            logger.info(r.json())
+        logger.info(r.json())
 
-        self.hub.update_entry(message, self.name, response['ts'])
-        pass
+        self.hub.update_entry(message, self.name, response["ts"])
 
     async def send_message(self, message: Message) -> None:
-        payload = {
-            "type": "message",
-            "username": message.author_username,
-            "channel": self.channel_id,
-            "text": message.text,
-        }
+
         logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
-            data=orjson.dumps(payload),
+            data=self.get_message_payload(message),
             headers=self.get_headers(self.bot_token),
         )
         response = r.json()
@@ -195,7 +175,7 @@ class Slack(Messenger):
         else:
             logger.info(r.json())
 
-        self.hub.update_entry(message, self.name, response['ts'])
+        self.hub.update_entry(message, self.name, response["ts"])
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
@@ -208,6 +188,17 @@ class Slack(Messenger):
         self.thread = threading.Thread(target=self.ws.run_forever)
         self.thread.daemon = True
         self.thread.start()
+
+    def get_message_payload(self, message: Message, ref_id:str = None) -> bytes:
+        payload = {
+            "type": "message",
+            "username": message.author_username,
+            "channel": self.channel_id,
+            "text": message.text,
+        }
+        if ref_id is not None:
+            payload["thread_ts"] = ref_id
+        return orjson.dumps(payload)
 
     def get_headers(self, token) -> dict:
         return {
