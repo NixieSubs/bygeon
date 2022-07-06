@@ -117,10 +117,12 @@ class Slack(Messenger):
                     username = self.get_username(payload["event"]["user"])
                     message_id = payload["event"]["ts"]
                     m = Message(self.name, message_id, username, text)
-                    self.hub.new_message(m)
+
                     if payload["event"].get("thread_ts") is not None:
                         ref_id = payload["event"]["thread_ts"]
                         self.hub.reply_message(m, ref_id)
+                    else:
+                        self.hub.new_message(m)
 
 
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
