@@ -71,13 +71,14 @@ class Hub:
                 if client.name != orig:
                     asyncio.run(client.recall_message(row[i]))
 
-
-    def init_database(self):
+    def init_database(self, keep_data=True):
         columns = tuple(
             Column(s, "VARCHAR(255)", nullable=True) for s in self.client_names
         )
-        create_table = Query.create_table("messages").columns(*columns)
-        self.execute_sql(str(create_table))
+        if not keep_data:
+            self.execute_sql("DROP TABLE IF EXISTS \"messages\"")
+            create_table = Query.create_table("messages").columns(*columns)
+            self.execute_sql(str(create_table))
         self.table = Table("messages")
 
     def execute_sql(self, query: str) -> None:
