@@ -69,7 +69,8 @@ class Hub:
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
-                    asyncio.run(client.recall_message(row[i]))
+                    thread = threading.Thread(target=client.recall_message, args=(row[i],)) # noqa
+                    thread.start()
 
     def init_database(self, keep_data=True):
         columns = tuple(
