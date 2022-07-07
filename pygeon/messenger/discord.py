@@ -116,7 +116,6 @@ class Discord(Messenger):
                 ws.send(orjson.dumps(payload))
 
         ws_message: WebsocketMessage = orjson.loads(message)
-
         opcode = ws_message["op"]
         match Opcode(opcode):
             case Opcode.HELLO:
@@ -132,9 +131,12 @@ class Discord(Messenger):
                 # TODO
                 pass
             case Opcode.DISPATCH:
+
                 type = ws_message["t"]
                 match EventName(type):
                     case EventName.MESSAGE_CREATE:
+                        if ws_message["d"].get("channel_id") != self.channel_id:
+                            return None
                         text = ws_message["d"]["content"]
                         logger.info("Received message: %s", text)
                         username = ws_message["d"]["author"]["username"]
@@ -167,13 +169,7 @@ class Discord(Messenger):
 
     def send_reply(self, message: Message, ref_id: str) -> None:
         payload = {
-            "embeds": [
-                {
-                    "author": {"name": message.author_username},
-                    "title": "says",
-                    "description": message.text,
-                }
-            ],
+            "content": f"[{message.author_username}]: {message.text}",
             "message_reference": {
                 "message_id": ref_id,
             },
@@ -192,13 +188,7 @@ class Discord(Messenger):
 
     def send_message(self, message: Message) -> None:
         payload = {
-            "embeds": [
-                {
-                    "author": {"name": message.author_username},
-                    "title": "says",
-                    "description": message.text,
-                }
-            ],
+            "content": f"[{message.author_username}]: {message.text}"
         }
         r = requests.post(
             Endpoints.SEND_MESSAGE.format(self.channel_id),
