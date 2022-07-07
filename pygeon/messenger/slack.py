@@ -155,7 +155,7 @@ class Slack(Messenger):
             logger.info("Successfully got websocket url")
         return websocket_url
 
-    async def send_reply(self, message: Message, ref_id: str) -> None:
+    def send_reply(self, message: Message, ref_id: str) -> None:
         logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
@@ -167,7 +167,7 @@ class Slack(Messenger):
 
         self.hub.update_entry(message, self.name, response["ts"])
 
-    async def send_message(self, message: Message) -> None:
+    def send_message(self, message: Message) -> None:
 
         logger.info("Sending message: {}".format(message.text))
         r = requests.post(
@@ -183,7 +183,7 @@ class Slack(Messenger):
 
         self.hub.update_entry(message, self.name, response["ts"])
 
-    async def recall_message(self, message_id: str) -> None:
+    def recall_message(self, message_id: str) -> None:
         payload = {
             "token": self.bot_token,
             "channel": self.channel_id,

@@ -2,6 +2,8 @@ import sqlite3
 from messenger.messenger import Messenger
 from message import Message
 
+import threading
+
 import asyncio
 
 from typing import List
@@ -27,10 +29,10 @@ class Hub:
 
     def new_message(self, message: Message):
         self.new_entry(message)
-
         for client in self.clients:
             if client.name != message.origin:
-                asyncio.run(client.send_message(message))
+                thread = threading.Thread(target=client.send_message, args=(message,))
+                thread.start()
 
     def new_entry(self, message: Message) -> None:
         origin_id = message.origin_id
@@ -57,7 +59,8 @@ class Hub:
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
-                    asyncio.run(client.send_reply(message, row[i]))
+                    thread = threading.Thread(target=client.send_reply, args=(message, row[i])) # noqa
+                    thread.start()
         print(self.cur.execute(sql))
 
     def recall_message(self, orig: str, recalled_id: str) -> None:

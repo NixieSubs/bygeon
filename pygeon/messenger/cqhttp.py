@@ -116,7 +116,7 @@ class CQHttp(Messenger):
                 recalled_id = ws_message["message_id"]
                 self.hub.recall_message(self.name, recalled_id)
                 ...
-    async def recall_message(self, message_id: str) -> None:
+    def recall_message(self, message_id: str) -> None:
         payload = {
             "message_id": message_id,
         }
@@ -127,7 +127,7 @@ class CQHttp(Messenger):
     def reconnect(self) -> None:
         ...
 
-    async def send_reply(self, message: Message, ref_id: str) -> None:
+    def send_reply(self, message: Message, ref_id: str) -> None:
         payload = {
             "group_id": self.group_id,
             "message": f"[CQ:reply,id={ref_id}] {message.text}",
@@ -137,7 +137,7 @@ class CQHttp(Messenger):
         self.hub.update_entry(message, self.name, response["data"]["message_id"])
         logger.error(r.json())
 
-    async def send_message(self, message: Message) -> None:
+    def send_message(self, message: Message) -> None:
         payload = {
             "group_id": self.group_id,
             "message": message.text,

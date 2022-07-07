@@ -1,4 +1,3 @@
-import websocket
 from websocket import WebSocketApp as WSApp
 import threading
 import requests
@@ -158,7 +157,7 @@ class Discord(Messenger):
             case _:
                 pass
 
-    async def recall_message(self, message_id: str) -> None:
+    def recall_message(self, message_id: str) -> None:
         r = requests.delete(
             Endpoints.DELETE_MESSAGE.format(self.channel_id, message_id),
             headers=self.headers,
@@ -166,7 +165,7 @@ class Discord(Messenger):
         logger.info("Trying to recall: " + message_id)
         logger.info(r.json())
 
-    async def send_reply(self, message: Message, ref_id: str) -> None:
+    def send_reply(self, message: Message, ref_id: str) -> None:
         payload = {
             "embeds": [
                 {
@@ -191,7 +190,7 @@ class Discord(Messenger):
         message_id: str = r.json()["id"]
         self.hub.update_entry(message, self.name, message_id)
 
-    async def send_message(self, message: Message) -> None:
+    def send_message(self, message: Message) -> None:
         payload = {
             "embeds": [
                 {
