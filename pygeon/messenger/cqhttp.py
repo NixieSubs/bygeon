@@ -140,7 +140,7 @@ class CQHttp(Messenger):
     def send_message(self, message: Message) -> None:
         payload = {
             "group_id": self.group_id,
-            "message": message.text,
+            "message": f"[{message.author_username}]: {message.text}",
         }
         logger.info(payload)
 
