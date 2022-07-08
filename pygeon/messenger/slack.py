@@ -71,8 +71,8 @@ class Slack(Messenger):
 
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
-        payload = message["payload"]
-        ws.send(orjson.dumps({"envelope_id": envelope_id, "payload": payload}))
+        # payload = message["payload"]
+        ws.send(orjson.dumps({"envelope_id": envelope_id}))
 
     def get_username(self, id: str) -> str:
         headers = self.get_headers(self.bot_token)
