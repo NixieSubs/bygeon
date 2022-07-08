@@ -1,5 +1,6 @@
 from enum import Enum
-from typing import List, TypedDict
+from typing import List, TypedDict, Union
+from typing_extensions import NotRequired
 
 
 class Endpoints:
@@ -9,21 +10,41 @@ class Endpoints:
     CHAT_DELETE = "https://slack.com/api/chat.delete"
 
 
-class Events(Enum):
-    MESSAGE = "MESSAGE"
+class WSMessageType(Enum):
+    HELLO = "hello"
+    DISCONNECT = "disconnect"
+    EVENTS_API = "events_api"
 
 
-class Event(TypedDict):
+class EventType(Enum):
+    MESSAGE = "message"
+
+
+class MessageEventSubtype(Enum):
+    BOT_MESSAGE = "bot_message"
+    MESSAGE_CHANGED = "message_changed"
+    MESSAGE_DELETED = "message_deleted"
+
+    # Non-existent in WebSocket event
+    MESSAGE_REPLIED = "message_replied"
+    OTHERS = "others"
+
+
+class Attachment(TypedDict):
+    pass
+
+
+class MessageEvent(TypedDict):
     type: str
-    subtype: str
-    text: str
-    user: str
+    subtype: NotRequired[str]
     channel: str
-    event_ts: str
-    channel_type: str
-    thread_ts: str
+    user: str
+    text: NotRequired[str]
+    deleted_ts: NotRequired[str]
+
+    # Use this to create a reply thread
     ts: str
-    deleted_ts: str
+    attachment: NotRequired[List[Attachment]]
 
 
 class Element(TypedDict):
@@ -37,10 +58,22 @@ class Block(TypedDict):
     elements: List[Element]
 
 
+class TeamJoinEvent:
+    pass
+
+
+class PinAddedEvent(TypedDict):
+    pass
+
+
+class UserProfileChangedEvent(TypedDict):
+    pass
+
+
 class Payload(TypedDict):
     token: str
     team_id: str
-    event: Event
+    event: Union[MessageEvent, PinAddedEvent, TeamJoinEvent]
     client_msg_id: str
     type: str
     text: str
@@ -54,5 +87,4 @@ class Payload(TypedDict):
 class WSMessage(TypedDict):
     envelope_id: str
     payload: Payload
-    event: Event
     type: str
