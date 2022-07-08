@@ -152,7 +152,7 @@ class WebsocketMessage(TypedDict):
     op: int
     t: str
     s: int
-    d: Union[MessageCreateEvent, ReadyEvent]
+    d: Union[MessageCreateEvent, ReadyEvent, Hello, MessageDeleteEvent]
 
 
 class Opcode(Enum):
