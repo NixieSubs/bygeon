@@ -3,28 +3,46 @@ from messenger.slack import Slack
 from messenger.discord import Discord
 from messenger.cqhttp import CQHttp
 from hub import Hub
+from typing import List
 
 if __name__ == "__main__":
     with open("pygeon.toml", "rb") as f:
         config = tomli.load(f)
-    slack_bot_token = config["Slack"]["token"]
-    slack_app_token = config["Slack"]["app_token"]
-    slack_channel_id = config["Slack"]["group_id"]
 
-    discord_token = config["Discord"]["token"]
-    discord_channel_id = config["Discord"]["group_id"]
+    hub_configs = config["Hubs"]
+    hubs:List[Hub] = []
 
-    keep_data = config["Pygeon"]["keep_data"]
+    for (i, hub_config) in enumerate(hub_configs):
+        hub_name = hub_config.get("name", f"HUB-{i}")
+        keep_data = hub_config["keep_data"]
 
-    #cqhttp_group_id = config["CQHttp"]["group_id"]
+        hub = Hub(hub_name)
+        hubs.append(hub)
 
-    hub = Hub()
+        if hub_config.get('Discord') != None:
+            discord = Discord(
+                bot_token=hub_config['Discord']['bot_token'],
+                channel_id=hub_config['Discord']['channel_id'],
+                hub=hub
+            )
+            hub.add_client(discord)
+        if hub_config.get('Slack') != None:
+            slack = Slack(
+                app_token=hub_config['Slack']['app_token'],
+                bot_token=hub_config['Slack']['bot_token'],
+                channel_id=hub_config['Slack']['channel_id'],
+                hub=hub
+            )
+            hub.add_client(slack)
+        if hub_config.get('CQHttp') != None:
+            cqhttp = CQHttp(
+                group_id=hub_config['CQHttp']['group_id'],
+                hub=hub
+            )
 
-    slack = Slack(slack_app_token, slack_bot_token, slack_channel_id, hub)
-    discord = Discord(discord_token, discord_channel_id, hub)
-    #cqhttp = CQHttp(cqhttp_group_id, hub)
-    hub.add_client(slack)
-    hub.add_client(discord)
-    #hub.add_client(cqhttp)
-    hub.init_database(keep_data=keep_data)
-    hub.start()
+            hub.add_client(cqhttp)
+            hub.init_database(keep_data=keep_data)
+            hub.start()
+
+        for hub in hubs:
+            hub.join()
