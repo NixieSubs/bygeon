@@ -5,9 +5,10 @@ from typing_extensions import NotRequired
 
 class Endpoints:
     POST_MESSAGE = "https://slack.com/api/chat.postMessage"
-    USER_INFO = "https://slack.com/api/users.info"
+    USERS_INFO = "https://slack.com/api/users.info"
     CONNECTIONS_OPEN = "https://slack.com/api/apps.connections.open"
     CHAT_DELETE = "https://slack.com/api/chat.delete"
+    BOTS_INFO = "https://slack.com/api/bots.info"
 
 
 class WSMessageType(Enum):
