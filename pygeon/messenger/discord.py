@@ -5,12 +5,11 @@ import orjson
 import time
 import logging
 
-from enum import Enum
-from typing import TypedDict
-
 from hub import Hub
 from message import Message
 from .messenger import Messenger
+from .definition.discord import Opcode, EventName, WebsocketMessage
+from .definition.discord import MessageCreateEvent, ReadyEvent
 
 import colorlog as cl
 
@@ -28,60 +27,6 @@ handler.setFormatter(
 logger = cl.getLogger("Discord")
 logger.addHandler(handler)
 logger.setLevel(logging.DEBUG)
-
-
-class ReferencedMessage(TypedDict):
-    type: int
-    id: str
-
-
-class Author(TypedDict):
-    id: str
-    username: str
-    avatar: str
-    bot: bool
-
-
-class EmbedAuthor(TypedDict):
-    name: str
-    url: str
-    icon_url: str
-    proxy_icon_url: str
-
-
-class GatewayEvent(TypedDict):
-    type: int
-    referenced_message: ReferencedMessage
-    channel_id: str
-    content: str
-    id: str
-    author: Author
-    heartbeat_interval: int
-
-
-class WebsocketMessage(TypedDict):
-    op: int
-    t: str
-    s: int
-    d: GatewayEvent
-
-
-class Opcode(Enum):
-    DISPATCH = 0
-    HEARTBEAT = 1
-    IDENTIFY = 2
-    PRESENCE_UPDATE = 3
-    RESUME = 6
-    RECONNECT = 7
-    HELLO = 10
-    HEARTBEAT_ACK = 11
-
-
-class EventName(Enum):
-    MESSAGE_CREATE = "MESSAGE_CREATE"
-    MESSAGE_UPDATE = "MESSAGE_UPDATE"
-    MESSAGE_DELETE = "MESSAGE_DELETE"
-    READY = "READY"
 
 
 class Discord(Messenger):
@@ -117,6 +62,7 @@ class Discord(Messenger):
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
+
         match Opcode(opcode):
             case Opcode.HELLO:
                 heartbeat_interval = ws_message["d"]["heartbeat_interval"]
@@ -124,40 +70,57 @@ class Discord(Messenger):
                 threading.Thread(
                     target=heartbeat, args=(ws, heartbeat_interval)
                 ).start()
-            case 2:
+            case Opcode.HEARTBEAT:
                 # TODO
                 pass
             case 1:
                 # TODO
                 pass
             case Opcode.DISPATCH:
-
-                type = ws_message["t"]
-                match EventName(type):
-                    case EventName.MESSAGE_CREATE:
-                        if ws_message["d"].get("channel_id") != self.channel_id:
-                            return None
-                        text = ws_message["d"]["content"]
-                        logger.info("Received message: %s", text)
-                        username = ws_message["d"]["author"]["username"]
-                        orig_id = ws_message["d"]["id"]
-                        m = Message(self.name, orig_id, username, text)
-
-                        author = ws_message["d"]["author"]
-                        if not author.get("bot"):
-                            if ws_message["d"]["referenced_message"] is not None:
-                                referenced_id = ws_message["d"]["referenced_message"][
-                                    "id"
-                                ]
-                                self.hub.reply_message(m, referenced_id)
-                            else:
-                                self.hub.new_message(m)
-                    case EventName.MESSAGE_DELETE:
-                        message_id = ws_message["d"]["id"]
-                        self.hub.recall_message(self.name, message_id)
-
+                self.handle_dispatch(ws_message)
             case _:
                 pass
+
+    def handle_dispatch(self, ws_message: WebsocketMessage) -> None:
+        type = ws_message["t"]
+        match EventName(type):
+            case EventName.MESSAGE_CREATE:
+                self.handle_message_create(ws_message)
+            case EventName.MESSAGE_DELETE:
+                message_id = ws_message["d"]["id"]
+                self.hub.recall_message(self.name, message_id)
+            case EventName.READY:
+                self.handle_ready(ws_message)
+
+    def handle_ready(self, data: ReadyEvent) -> None:
+        self.bot_id = data["user"]["id"]
+
+    def handle_reply(self, m: Message, ref_id: str) -> None:
+        self.hub.reply_message(m, ref_id)
+
+    def handle_message_create(self, data: MessageCreateEvent) -> None:
+        if data.get("channel_id") != self.channel_id:
+            return None
+        elif data["author"].get("id") == self.bot_id:
+            return None
+
+        origin_id = data["id"]
+
+        text = data["content"]
+        logger.info("Received message: %s", text)
+
+        author = data["author"]
+        username = author["username"]
+
+        m = Message(self.name, origin_id, username, text)
+
+        author = data["author"]
+        if not author.get("bot"):
+            if data["referenced_message"] is not None:
+                ref_id = data["referenced_message"]["id"]
+                self.handle_reply(m, ref_id)
+            else:
+                self.hub.new_message(m)
 
     def recall_message(self, message_id: str) -> None:
         r = requests.delete(
@@ -187,9 +150,7 @@ class Discord(Messenger):
         self.hub.update_entry(message, self.name, message_id)
 
     def send_message(self, message: Message) -> None:
-        payload = {
-            "content": f"[{message.author_username}]: {message.text}"
-        }
+        payload = {"content": f"[{message.author_username}]: {message.text}"}
         r = requests.post(
             Endpoints.SEND_MESSAGE.format(self.channel_id),
             json=payload,
@@ -204,13 +165,14 @@ class Discord(Messenger):
         self.hub.update_entry(message, self.name, message_id)
 
     def send_identity(self, ws: WSApp) -> None:
-        payload = self.get_identity_payload()
+        payload = self.get_identity_payload
         print(payload)
         ws.send(payload)
 
+    @property
     def get_identity_payload(self) -> bytes:
         payload = {
-            "op": 2,
+            "op": Opcode.IDENTIFY.value,
             "d": {
                 "token": self.token,
                 "properties": {
@@ -226,8 +188,9 @@ class Discord(Messenger):
         return orjson.dumps(payload)
 
     def reconnect(self) -> None:
-        # TODO
-        pass
+        # XXX
+        self.ws.close()
+        self.start()
 
     def start(self) -> None:
         self.ws = WSApp(
