@@ -116,6 +116,16 @@ class Discord(Messenger):
         author = data["author"]
         username = author["username"]
 
+        for attachment in data["attachments"]:
+            url = attachment["url"]
+            filename = attachment["filename"]
+            if attachment["type"] == "image":
+                with requests.get(url, stream=True) as r:
+                    r.raise_for_status()
+                    with open(self.generate_cache_file_path(filename), 'wb') as f:
+                        for chunk in r.iter_content(chunk_size=8192):
+                            f.write(chunk)
+
         m = Message(self.name, origin_id, username, text)
 
         author = data["author"]
