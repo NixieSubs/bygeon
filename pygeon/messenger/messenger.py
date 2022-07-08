@@ -21,5 +21,3 @@ class Messenger(Protocol):
 
     def join(self) -> None:
         ...
-
-
