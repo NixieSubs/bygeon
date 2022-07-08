@@ -1,4 +1,5 @@
 import websocket
+from websocket import WebSocketApp as WSApp
 import threading
 import requests
 import orjson
@@ -30,6 +31,8 @@ class Slack(Messenger):
         self.channel_id = channel_id
         self.hub = hub
 
+        self.bot_user_id = self.get_bot_user_id()
+
     def on_open(self, ws) -> None:
         print("opened")
 
@@ -41,7 +44,7 @@ class Slack(Messenger):
         print("closed")
         print(close_msg)
 
-    def on_message(self, ws: websocket.WebSocketApp, message: str):
+    def on_message(self, ws: WSApp, message: str):
         ws_message: WSMessage = orjson.loads(message)
         ws_type = ws_message["type"]
 
@@ -71,29 +74,33 @@ class Slack(Messenger):
         subtype = event.get("subtype", "no_subtype")
         message_id = event["ts"]
         text = event["text"]
-        username = self.get_username(event["user"])
+        user_id = event["user"]
+        # username = self.get_username(user_id)
         match MessageEventSubtype(subtype):
             case MessageEventSubtype.MESSAGE_DELETED:
                 deleted_ts = event["deleted_ts"]
                 logger.info("Deleted message: {}".format(deleted_ts))
                 self.hub.recall_message(self.name, deleted_ts)
             case MessageEventSubtype.BOT_MESSAGE:
+                if user_id == self.bot_user_id:
+                    return None
                 ...
-            case _:
+            case MessageEventSubtype.NO_SUBTYPE:
+                username = self.get_username(user_id)
                 m = Message(self.name, message_id, username, text)
                 if (ref_id := event.get("thread_ts")) is not None:
                     self.hub.reply_message(m, ref_id)
                 else:
                     self.hub.new_message(m)
 
-    def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
+    def send_ack(self, ws: WSApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
         # payload = message["payload"]
         ws.send(orjson.dumps({"envelope_id": envelope_id}))
 
     def get_username(self, id: str) -> str:
         headers = self.get_headers(self.bot_token)
-        r = requests.get(Endpoints.USER_INFO + "?user=" + id, headers=headers)
+        r = requests.get(Endpoints.USERS_INFO + "?user=" + id, headers=headers)
         username = r.json()["user"]["name"]
         logger.info(r.json())
         return username
@@ -167,6 +174,12 @@ class Slack(Messenger):
         self.thread = threading.Thread(target=self.ws.run_forever)
         self.thread.daemon = True
         self.thread.start()
+
+    def get_bot_user_id(self) -> str:
+        headers = self.get_headers(self.bot_token)
+        r = requests.get(Endpoints.BOTS_INFO, headers=headers)
+        bot_info = orjson.loads(r.text)
+        return bot_info["bot"]["user_id"]
 
     def get_message_payload(self, m: Message, ref_id: str = None) -> bytes:
         payload = {
