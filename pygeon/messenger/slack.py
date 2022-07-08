@@ -68,15 +68,19 @@ class Slack(Messenger):
         message_id = event["ts"]
         text = event["text"]
         user_id = event["user"]
+        if event["channel"] != self.channel_id:
+            return None
         # username = self.get_username(user_id)
         match MessageEventSubtype(subtype):
             case MessageEventSubtype.MESSAGE_DELETED:
                 deleted_ts = event["deleted_ts"]
                 self.logger.info("Deleted message: {}".format(deleted_ts))
                 self.hub.recall_message(self.name, deleted_ts)
+
             case MessageEventSubtype.BOT_MESSAGE:
                 if user_id == self.bot_user_id:
                     return None
+
             case MessageEventSubtype.NO_SUBTYPE:
                 username = self.get_username(user_id)
                 m = Message(self.name, message_id, username, text)
@@ -93,8 +97,9 @@ class Slack(Messenger):
     def get_username(self, id: str) -> str:
         headers = self.get_headers(self.bot_token)
         r = requests.get(Endpoints.USERS_INFO + "?user=" + id, headers=headers)
-        username = r.json()["user"]["name"]
-        self.logger.info(r.json())
+        response = orjson.loads(r.text)
+        self.logger.debug(response)
+        username = response["user"]["name"]
         return username
 
     def reconnect(self) -> None:
@@ -104,13 +109,17 @@ class Slack(Messenger):
     def get_websocket_url(self) -> str:
         header = self.get_headers(self.app_token)
         r = requests.post(Endpoints.CONNECTIONS_OPEN, headers=header)
+        response = orjson.loads(r.text)
+        self.logger.debug(response)
+
         try:
-            websocket_url = r.json()["url"]
+            websocket_url = response["url"]
         except KeyError:
             self.logger.error("Could not get websocket url")
             raise Exception("Could not get websocket url")
         else:
             self.logger.info("Successfully got websocket url")
+
         return websocket_url
 
     def send_reply(self, message: Message, ref_id: str) -> None:
@@ -120,8 +129,8 @@ class Slack(Messenger):
             data=self.get_message_payload(message, ref_id),
             headers=self.get_headers(self.bot_token),
         )
-        response = r.json()
-        self.logger.info(r.json())
+        response = orjson.loads(r.text)
+        self.logger.debug(response)
 
         self.hub.update_entry(message, self.name, response["ts"])
 
@@ -133,11 +142,9 @@ class Slack(Messenger):
             data=self.get_message_payload(message),
             headers=self.get_headers(self.bot_token),
         )
-        response = r.json()
-        if r.status_code != 200:
-            self.logger.error(r.json())
-        else:
-            self.logger.info(r.json())
+        response = orjson.loads(r.text)
+        if not response["ok"]:
+            self.logger.error(response)
 
         self.hub.update_entry(message, self.name, response["ts"])
 
@@ -153,7 +160,6 @@ class Slack(Messenger):
             headers=self.get_headers(self.bot_token),
         )
         self.logger.info("Trying to recall: " + message_id)
-        self.logger.info(r.json())
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(
