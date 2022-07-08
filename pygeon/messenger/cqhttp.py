@@ -2,25 +2,13 @@ from .messenger import Messenger
 import websocket
 from websocket import WebSocketApp as WSApp
 from hub import Hub
-from typing import TypedDict
 from message import Message
 import threading
 import orjson
 import requests
-import logging
 
 from typing import TypedDict, List
 from enum import Enum
-
-import colorlog as cl
-
-handler = cl.StreamHandler()
-handler.setFormatter(
-    cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
-)
-logger = cl.getLogger("CQHttp")
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
 
 
 class PostType(Enum):
@@ -75,6 +63,7 @@ class CQHttp(Messenger):
         return "http://localhost:8081/delete_msg"
 
     def __init__(self, group_id: str, hub: Hub) -> None:
+        super().__init__()
         self.group_id = int(group_id)
         self.hub = hub
 
@@ -116,13 +105,14 @@ class CQHttp(Messenger):
                 recalled_id = ws_message["message_id"]
                 self.hub.recall_message(self.name, recalled_id)
                 ...
+
     def recall_message(self, message_id: str) -> None:
         payload = {
             "message_id": message_id,
         }
         r = requests.post(self.recall_url, json=payload)
-        logger.info("Trying to recall: " + message_id)
-        logger.info(r.json())
+        self.logger.info("Trying to recall: " + message_id)
+        self.logger.info(r.json())
 
     def reconnect(self) -> None:
         ...
@@ -135,17 +125,17 @@ class CQHttp(Messenger):
         r = requests.post(self.api_url, json=payload)
         response = r.json()
         self.hub.update_entry(message, self.name, response["data"]["message_id"])
-        logger.error(r.json())
+        self.logger.error(r.json())
 
     def send_message(self, message: Message) -> None:
         payload = {
             "group_id": self.group_id,
             "message": f"[{message.author_username}]: {message.text}",
         }
-        logger.info(payload)
+        self.logger.info(payload)
 
         r = requests.post(self.api_url, json=payload)
-        logger.info(r.text)
+        self.logger.info(r.text)
 
         response = r.json()
         self.hub.update_entry(message, self.name, response["data"]["message_id"])

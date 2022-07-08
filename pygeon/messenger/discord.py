@@ -3,15 +3,12 @@ import threading
 import requests
 import orjson
 import time
-import logging
 
 from hub import Hub
 from message import Message
 from .messenger import Messenger
 from .definition.discord import Opcode, EventName, WebsocketMessage
 from .definition.discord import MessageCreateEvent, ReadyEvent
-
-import colorlog as cl
 
 
 class Endpoints:
@@ -20,17 +17,9 @@ class Endpoints:
     DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
 
 
-handler = cl.StreamHandler()
-handler.setFormatter(
-    cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
-)
-logger = cl.getLogger("Discord")
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-
-
 class Discord(Messenger):
     def __init__(self, token: str, channel_id, hub: Hub) -> None:
+        super.__init__()
         self.token = token
         self.channel_id = channel_id
         self.hub = hub
@@ -111,7 +100,7 @@ class Discord(Messenger):
         origin_id = data["id"]
 
         text = data["content"]
-        logger.info("Received message: %s", text)
+        self.logger.info("Received message: %s", text)
 
         author = data["author"]
         username = author["username"]
@@ -141,8 +130,8 @@ class Discord(Messenger):
             Endpoints.DELETE_MESSAGE.format(self.channel_id, message_id),
             headers=self.headers,
         )
-        logger.info("Trying to recall: " + message_id)
-        logger.info(r.json())
+        self.logger.info("Trying to recall: " + message_id)
+        self.logger.info(r.json())
 
     def send_reply(self, message: Message, ref_id: str) -> None:
         payload = {
@@ -157,9 +146,9 @@ class Discord(Messenger):
             headers=self.headers,
         )
         if r.status_code != 200:
-            logger.error(r.json())
+            self.logger.error(r.json())
         else:
-            logger.info(r.json())
+            self.logger.info(r.json())
         message_id: str = r.json()["id"]
         self.hub.update_entry(message, self.name, message_id)
 
@@ -171,9 +160,9 @@ class Discord(Messenger):
             headers=self.headers,
         )
         if r.status_code != 200:
-            logger.error(r.json())
+            self.logger.error(r.json())
         else:
-            logger.info(r.json())
+            self.logger.info(r.json())
 
         message_id: str = r.json()["id"]
         self.hub.update_entry(message, self.name, message_id)

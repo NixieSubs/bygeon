@@ -3,7 +3,6 @@ from websocket import WebSocketApp as WSApp
 import threading
 import requests
 import orjson
-import logging
 
 from hub import Hub
 from message import Message
@@ -13,19 +12,12 @@ from .definition.slack import MessageEventSubtype, MessageEvent, EventType
 
 import colorlog as cl
 
-handler = cl.StreamHandler()
-handler.setFormatter(
-    cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
-)
-logger = cl.getLogger("Slack")
-logger.addHandler(handler)
-logger.setLevel(logging.DEBUG)
-
-
 class Slack(Messenger):
     def __init__(
         self, app_token: str, bot_token: str, channel_id: str, hub: Hub
     ) -> None:
+        super.__init__()
+
         self.app_token = app_token
         self.bot_token = bot_token
         self.channel_id = channel_id
@@ -79,12 +71,11 @@ class Slack(Messenger):
         match MessageEventSubtype(subtype):
             case MessageEventSubtype.MESSAGE_DELETED:
                 deleted_ts = event["deleted_ts"]
-                logger.info("Deleted message: {}".format(deleted_ts))
+                self.logger.info("Deleted message: {}".format(deleted_ts))
                 self.hub.recall_message(self.name, deleted_ts)
             case MessageEventSubtype.BOT_MESSAGE:
                 if user_id == self.bot_user_id:
                     return None
-                ...
             case MessageEventSubtype.NO_SUBTYPE:
                 username = self.get_username(user_id)
                 m = Message(self.name, message_id, username, text)
@@ -102,7 +93,7 @@ class Slack(Messenger):
         headers = self.get_headers(self.bot_token)
         r = requests.get(Endpoints.USERS_INFO + "?user=" + id, headers=headers)
         username = r.json()["user"]["name"]
-        logger.info(r.json())
+        self.logger.info(r.json())
         return username
 
     def reconnect(self) -> None:
@@ -115,27 +106,27 @@ class Slack(Messenger):
         try:
             websocket_url = r.json()["url"]
         except KeyError:
-            logger.error("Could not get websocket url")
+            self.logger.error("Could not get websocket url")
             raise Exception("Could not get websocket url")
         else:
-            logger.info("Successfully got websocket url")
+            self.logger.info("Successfully got websocket url")
         return websocket_url
 
     def send_reply(self, message: Message, ref_id: str) -> None:
-        logger.info("Sending message: {}".format(message.text))
+        self.logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
             data=self.get_message_payload(message, ref_id),
             headers=self.get_headers(self.bot_token),
         )
         response = r.json()
-        logger.info(r.json())
+        self.logger.info(r.json())
 
         self.hub.update_entry(message, self.name, response["ts"])
 
     def send_message(self, message: Message) -> None:
 
-        logger.info("Sending message: {}".format(message.text))
+        self.logger.info("Sending message: {}".format(message.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
             data=self.get_message_payload(message),
@@ -143,9 +134,9 @@ class Slack(Messenger):
         )
         response = r.json()
         if r.status_code != 200:
-            logger.error(r.json())
+            self.logger.error(r.json())
         else:
-            logger.info(r.json())
+            self.logger.info(r.json())
 
         self.hub.update_entry(message, self.name, response["ts"])
 
@@ -160,8 +151,8 @@ class Slack(Messenger):
             json=payload,
             headers=self.get_headers(self.bot_token),
         )
-        logger.info("Trying to recall: " + message_id)
-        logger.info(r.json())
+        self.logger.info("Trying to recall: " + message_id)
+        self.logger.info(r.json())
 
     def start(self) -> None:
         self.ws = websocket.WebSocketApp(

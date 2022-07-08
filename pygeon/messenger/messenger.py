@@ -1,9 +1,31 @@
 from typing import Protocol
 from message import Message
 import os
+import colorlog as cl
+import logging
+
+handler = cl.StreamHandler()
+handler.setFormatter(
+    cl.ColoredFormatter("%(log_color)s%(levelname)s: %(name)s: %(message)s")
+)
+logger = cl.getLogger("Discord")
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
+logger_format = "%(log_color)s%(levelname)s: %(name)s: %(message)s"
 
 
 class Messenger(Protocol):
+    logger: logging.Logger
+
+    def __init__(self):
+        handler = cl.StreamHandler()
+        handler.setFormatter(cl.ColoredFormatter(logger_format))
+
+        self.logger = cl.getLogger(self.name)
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.DEBUG)
+
     @property
     def file_cache_path(self) -> str:
         return os.path.join(os.getcwd(), "file_cache")
