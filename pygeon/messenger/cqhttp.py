@@ -2,13 +2,14 @@ from .messenger import Messenger
 import websocket
 from websocket import WebSocketApp as WSApp
 from hub import Hub
-from message import Message
+from message import Message, Attachment
 import threading
 import orjson
 import requests
 
 from typing import TypedDict, List
 from enum import Enum
+import util
 
 
 class PostType(Enum):
@@ -83,20 +84,31 @@ class CQHttp(Messenger):
         ws_message: WSMessage = orjson.loads(message)
         post_type = ws_message["post_type"]
         is_reply = False
+        message_group_id = ws_message.get("group_id")
         match PostType(post_type):
             case PostType.MESSAGE:
+                if message_group_id != self.group_id:
+                    return None
                 message_id = ws_message["message_id"]
                 author = ws_message["sender"]["nickname"]
 
                 data = ws_message["message"]
                 text = ""
+                attachments = []
                 for d in data:
                     if d["type"] == "reply":
                         is_reply = True
                         ref_id = d["data"]["id"]
                     elif d["type"] == "text":
                         text += d["data"]["text"]
-                m = Message(self.name, message_id, author, text)
+                    elif d["type"] == "image":
+                        url = d["data"]["url"]
+                        filename = d["data"]["file"]
+                        filename = f"{self.name}_{filename}"
+                        path = self.generate_cache_path(self.hub.name)
+                        file_path = util.download_to_cache(url, path, filename)
+                        attachments.append(Attachment("image", file_path))
+                m = Message(self.name, message_id, author, text, attachments)
                 if is_reply:
                     self.hub.reply_message(m, ref_id)
                 else:
@@ -130,8 +142,11 @@ class CQHttp(Messenger):
     def send_message(self, message: Message) -> None:
         payload = {
             "group_id": self.group_id,
-            "message": f"[{message.author_username}]: {message.text}",
+            "message": "",
         }
+        for attachment in message.attachments:
+            payload["message"] += f"[CQ:{attachment.type},file=file:{attachment.file_path}]"
+        payload["message"] += f"[{message.author_username}]: {message.text}"
         self.logger.info(payload)
 
         r = requests.post(self.api_url, json=payload)

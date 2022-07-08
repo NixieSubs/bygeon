@@ -29,10 +29,10 @@ class Messenger(Protocol):
 
     @property
     def file_cache_path(self) -> str:
-        return os.path.join(os.getcwd(), "file_cache")
+        return os.path.join(os.getcwd(), "cache")
 
-    def generate_cache_file_path(self, filename: str) -> str:
-        return os.path.join(self.file_cache_path, filename)
+    def generate_cache_path(self, hub_name: str) -> str:
+        return os.path.join(self.file_cache_path, hub_name)
 
     @property
     def name(self) -> str:

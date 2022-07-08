@@ -3,12 +3,16 @@ import threading
 import requests
 import orjson
 import time
+from typing import cast, List
+import os
 
 from hub import Hub
-from message import Message
+from message import Message, Attachment, AttachmentType
 from .messenger import Messenger
 from .definition.discord import Opcode, EventName, WebsocketMessage
-from .definition.discord import MessageCreateEvent, ReadyEvent
+from .definition.discord import MessageCreateEvent, ReadyEvent, Hello, MessageDeleteEvent
+
+import util
 
 
 class Endpoints:
@@ -53,7 +57,8 @@ class Discord(Messenger):
 
         match Opcode(opcode):
             case Opcode.HELLO:
-                heartbeat_interval = ws_message["d"]["heartbeat_interval"]
+                hello = cast(Hello, ws_message["d"])
+                heartbeat_interval = hello["heartbeat_interval"]
                 self.send_identity(ws)
                 threading.Thread(
                     target=heartbeat, args=(ws, heartbeat_interval)
@@ -73,13 +78,14 @@ class Discord(Messenger):
         type = ws_message["t"]
         match EventName(type):
             case EventName.MESSAGE_CREATE:
-                message_create_event: MessageCreateEvent = ws_message["d"]
-                self.handle_message_create(message_create_event)
+                create_event = cast(MessageCreateEvent, ws_message["d"])
+                self.handle_message_create(create_event)
             case EventName.MESSAGE_DELETE:
-                message_id = ws_message["d"]["id"]
+                delete_event = cast(MessageDeleteEvent, ws_message["d"])
+                message_id = delete_event["id"]
                 self.hub.recall_message(self.name, message_id)
             case EventName.READY:
-                ready_event: ReadyEvent = ws_message["d"]
+                ready_event = cast (ReadyEvent, ws_message["d"])
                 self.handle_ready(ready_event)
             case _:
                 pass
@@ -92,6 +98,8 @@ class Discord(Messenger):
 
     def handle_message_create(self, data: MessageCreateEvent) -> None:
         if data.get("channel_id") != self.channel_id:
+            self.logger.error(data.get("channel_id"))
+            self.logger.info(self.channel_id)
             return None
         elif data["author"].get("id") == self.bot_id:
             return None
@@ -106,15 +114,17 @@ class Discord(Messenger):
 
         for attachment in data["attachments"]:
             url = attachment["url"]
-            filename = attachment["filename"]
-            if attachment["type"] == "image":
-                with requests.get(url, stream=True) as r:
-                    r.raise_for_status()
-                    with open(self.generate_cache_file_path(filename), 'wb') as f:
-                        for chunk in r.iter_content(chunk_size=8192):
-                            f.write(chunk)
 
-        m = Message(self.name, origin_id, username, text)
+            filename = attachment["filename"]
+            filename = f"{self.name}_{filename}"
+            attachments:List[Attachment] = []
+            if attachment["content_type"].startswith("image"):
+                a_type = AttachmentType.IMAGE
+            path = self.generate_cache_path(self.hub.name)
+            file_path = util.download_to_cache(url, path, filename)
+            attachments.append(Attachment(a_type.value, file_path))
+
+        m = Message(self.name, origin_id, username, text, attachments)
 
         author = data["author"]
         if not author.get("bot"):
@@ -153,10 +163,20 @@ class Discord(Messenger):
 
     def send_message(self, message: Message) -> None:
         payload = {"content": f"[{message.author_username}]: {message.text}"}
+
+        files = []
+        for (i, attachment) in enumerate(message.attachments):
+            fn = os.path.basename(attachment.file_path)
+            files.append(
+                (f"files[{i}]", (fn,  open(attachment.file_path, "rb"), 'image/png'))
+            )
+
+
         r = requests.post(
             Endpoints.SEND_MESSAGE.format(self.channel_id),
-            json=payload,
+            data=payload,
             headers=self.headers,
+            files=files
         )
         if r.status_code != 200:
             self.logger.error(r.json())
