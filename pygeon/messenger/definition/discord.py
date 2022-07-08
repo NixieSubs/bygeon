@@ -59,7 +59,17 @@ class Role(TypedDict):
 
 
 class Attachment(TypedDict):
-    pass
+    id: str
+    filename: str
+    description: NotRequired[str]
+    content_type: NotRequired[str]
+    # size	integer	size of file in bytes
+    size: int
+    url: str
+    proxy_url: str
+    height: NotRequired[Optional[int]]
+    width: NotRequired[Optional[int]]
+    ephemeral: NotRequired[bool]
 
 
 class Embed(TypedDict):
