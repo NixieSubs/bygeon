@@ -85,12 +85,16 @@ class Discord(Messenger):
         type = ws_message["t"]
         match EventName(type):
             case EventName.MESSAGE_CREATE:
-                self.handle_message_create(ws_message)
+                message_create_event: MessageCreateEvent = ws_message["d"]
+                self.handle_message_create(message_create_event)
             case EventName.MESSAGE_DELETE:
                 message_id = ws_message["d"]["id"]
                 self.hub.recall_message(self.name, message_id)
             case EventName.READY:
-                self.handle_ready(ws_message)
+                ready_event: ReadyEvent = ws_message["d"]
+                self.handle_ready(ready_event)
+            case _:
+                pass
 
     def handle_ready(self, data: ReadyEvent) -> None:
         self.bot_id = data["user"]["id"]
