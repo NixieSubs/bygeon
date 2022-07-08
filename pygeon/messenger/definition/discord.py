@@ -123,7 +123,15 @@ class DiscordMessage(TypedDict):
 
 class MessageCreateEvent(DiscordMessage):
     guild_id: NotRequired[str]
-    mentions: List[User]
+    # mentions: List[User]
+
+class MessageDeleteEvent(TypedDict):
+    id: str
+    channel_id: str
+    guild_id: NotRequired[str]
+
+class Hello(TypedDict):
+    heartbeat_interval: int
 
 
 class Application(TypedDict):
