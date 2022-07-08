@@ -18,13 +18,14 @@ logger_format = "%(log_color)s%(levelname)s: %(name)s: %(message)s"
 class Messenger(Protocol):
     logger: logging.Logger
 
-    def __init__(self):
+    def get_logger(self):
         handler = cl.StreamHandler()
         handler.setFormatter(cl.ColoredFormatter(logger_format))
 
-        self.logger = cl.getLogger(self.name)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.DEBUG)
+        logger = cl.getLogger(self.name)
+        logger.addHandler(handler)
+        logger.setLevel(logging.DEBUG)
+        return logger
 
     @property
     def file_cache_path(self) -> str:

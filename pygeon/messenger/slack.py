@@ -4,10 +4,12 @@ import threading
 import requests
 import orjson
 
+from typing import cast
+
 from hub import Hub
 from message import Message
 from .messenger import Messenger
-from .definition.slack import Endpoints, Payload, WSMessage, WSMessageType
+from .definition.slack import Endpoints, Event, WSMessage, WSMessageType
 from .definition.slack import MessageEventSubtype, MessageEvent, EventType
 
 import colorlog as cl
@@ -16,12 +18,12 @@ class Slack(Messenger):
     def __init__(
         self, app_token: str, bot_token: str, channel_id: str, hub: Hub
     ) -> None:
-        super.__init__()
 
         self.app_token = app_token
         self.bot_token = bot_token
         self.channel_id = channel_id
         self.hub = hub
+        self.logger = self.get_logger()
 
         self.bot_user_id = self.get_bot_user_id()
 
@@ -47,16 +49,15 @@ class Slack(Messenger):
             case WSMessageType.DISCONNECT:
                 self.reconnect()
             case WSMessageType.EVENTS_API:
-                payload = ws_message["payload"]
+                event = ws_message["payload"]["event"]
                 self.send_ack(ws, ws_message)
-                self.handle_event(payload)
+                self.handle_event(event)
 
-    # Payload is needed to decide event type later
-    def handle_event(self, payload: Payload) -> None:
-        event_type = payload["event"]["type"]
+    def handle_event(self, event: Event) -> None:
+        event_type = event["type"]
         match EventType(event_type):
             case EventType.MESSAGE:
-                event: MessageEvent = payload["event"]
+                event = cast(MessageEvent, event)
                 self.handle_message(event)
             case _:
                 pass
@@ -168,9 +169,10 @@ class Slack(Messenger):
 
     def get_bot_user_id(self) -> str:
         headers = self.get_headers(self.bot_token)
-        r = requests.get(Endpoints.BOTS_INFO, headers=headers)
+
+        r = requests.get(Endpoints.AUTH_TEST, headers=headers)
         bot_info = orjson.loads(r.text)
-        return bot_info["bot"]["user_id"]
+        return bot_info["user_id"]
 
     def get_message_payload(self, m: Message, ref_id: str = None) -> bytes:
         payload = {

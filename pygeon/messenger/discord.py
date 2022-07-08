@@ -18,12 +18,11 @@ class Endpoints:
 
 
 class Discord(Messenger):
-    def __init__(self, token: str, channel_id, hub: Hub) -> None:
-        super.__init__()
-        self.token = token
+    def __init__(self, bot_token: str, channel_id: str, hub: Hub) -> None:
+        self.token = bot_token
         self.channel_id = channel_id
         self.hub = hub
-
+        self.logger = self.get_logger()
     @property
     def headers(self):
         return {"Authorization": f"Bot {self.token}"}

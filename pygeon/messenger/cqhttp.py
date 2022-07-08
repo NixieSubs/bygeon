@@ -63,9 +63,9 @@ class CQHttp(Messenger):
         return "http://localhost:8081/delete_msg"
 
     def __init__(self, group_id: str, hub: Hub) -> None:
-        super().__init__()
         self.group_id = int(group_id)
         self.hub = hub
+        self.logger = self.get_logger()
 
     def on_open(self, ws) -> None:
         # TODO

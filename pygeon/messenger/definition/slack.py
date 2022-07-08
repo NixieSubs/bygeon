@@ -9,6 +9,7 @@ class Endpoints:
     CONNECTIONS_OPEN = "https://slack.com/api/apps.connections.open"
     CHAT_DELETE = "https://slack.com/api/chat.delete"
     BOTS_INFO = "https://slack.com/api/bots.info"
+    AUTH_TEST = "https://slack.com/api/auth.test"
 
 
 class WSMessageType(Enum):
@@ -34,14 +35,16 @@ class MessageEventSubtype(Enum):
 class Attachment(TypedDict):
     pass
 
-
-class MessageEvent(TypedDict):
+class Event(TypedDict):
     type: str
     subtype: NotRequired[str]
+
+class MessageEvent(Event):
     channel: str
     user: str
     text: NotRequired[str]
     deleted_ts: NotRequired[str]
+    thread_ts: NotRequired[str]
 
     # Use this to create a reply thread
     ts: str
@@ -71,10 +74,12 @@ class UserProfileChangedEvent(TypedDict):
     pass
 
 
+
+
 class Payload(TypedDict):
     token: str
     team_id: str
-    event: Union[MessageEvent, PinAddedEvent, TeamJoinEvent]
+    event: Event
     client_msg_id: str
     type: str
     text: str
