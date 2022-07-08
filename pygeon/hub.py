@@ -4,9 +4,7 @@ from message import Message
 
 import threading
 
-import asyncio
-
-from typing import List
+from typing import Callable, List
 
 from pypika import Query, Column, Table
 
@@ -31,8 +29,7 @@ class Hub:
         self.new_entry(message)
         for client in self.clients:
             if client.name != message.origin:
-                thread = threading.Thread(target=client.send_message, args=(message,))
-                thread.start()
+                self.execute_in_thread(client.send_message, (message,))
 
     def new_entry(self, message: Message) -> None:
         origin_id = message.origin_id
@@ -59,8 +56,7 @@ class Hub:
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
-                    thread = threading.Thread(target=client.send_reply, args=(message, row[i])) # noqa
-                    thread.start()
+                    self.execute_in_thread(client.send_reply, (message, row[i]))
         print(self.cur.execute(sql))
 
     def recall_message(self, orig: str, recalled_id: str) -> None:
@@ -69,8 +65,7 @@ class Hub:
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
-                    thread = threading.Thread(target=client.recall_message, args=(row[i],)) # noqa
-                    thread.start()
+                    self.execute_in_thread(client.recall_message, (row[i],))
 
     def init_database(self, keep_data=True):
         columns = tuple(
@@ -86,3 +81,7 @@ class Hub:
         print(query)
         self.cur.execute(query)
         self.con.commit()
+
+    def execute_in_thread(self, target: Callable, args: tuple) -> None:
+        thread = threading.Thread(target=target, args=args)
+        thread.start()
