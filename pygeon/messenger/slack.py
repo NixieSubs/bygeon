@@ -7,7 +7,8 @@ import logging
 from hub import Hub
 from message import Message
 from .messenger import Messenger
-from .definition.slack import Endpoints, WSMessage
+from .definition.slack import Endpoints, Payload, WSMessage, WSMessageType
+from .definition.slack import MessageEventSubtype, MessageEvent, EventType
 
 import colorlog as cl
 
@@ -42,32 +43,48 @@ class Slack(Messenger):
 
     def on_message(self, ws: websocket.WebSocketApp, message: str):
         ws_message: WSMessage = orjson.loads(message)
+        ws_type = ws_message["type"]
 
-        match ws_message["type"]:
-            case "hello":
+        match WSMessageType(ws_type):
+            case WSMessageType.HELLO:
                 pass
-            case "disconnect":
+            # FIXME
+            case WSMessageType.DISCONNECT:
                 self.reconnect()
-            case _:
+            case WSMessageType.EVENTS_API:
                 payload = ws_message["payload"]
                 self.send_ack(ws, ws_message)
-                subtype = payload["event"].get("subtype")
-                if subtype == "message_deleted":
+                self.handle_event(payload)
 
-                    deleted_ts = payload["event"]["deleted_ts"]
-                    logger.info("Deleted message: {}".format(deleted_ts))
-                    self.hub.recall_message(self.name, deleted_ts)
-                elif subtype != "bot_message":
-                    username = self.get_username(payload["event"]["user"])
-                    message_id = payload["event"]["ts"]
-                    text = payload["event"]["text"]
-                    m = Message(self.name, message_id, username, text)
+    # Payload is needed to decide event type later
+    def handle_event(self, payload: Payload) -> None:
+        event_type = payload["event"]["type"]
+        match EventType(event_type):
+            case EventType.MESSAGE:
+                event: MessageEvent = payload["event"]
+                self.handle_message(event)
+            case _:
+                pass
 
-                    if payload["event"].get("thread_ts") is not None:
-                        ref_id = payload["event"]["thread_ts"]
-                        self.hub.reply_message(m, ref_id)
-                    else:
-                        self.hub.new_message(m)
+    def handle_message(self, event: MessageEvent) -> None:
+        # XXX
+        subtype = event.get("subtype", "others")
+        message_id = event["ts"]
+        text = event["text"]
+        username = self.get_username(event["user"])
+        match MessageEventSubtype(subtype):
+            case MessageEventSubtype.MESSAGE_DELETED:
+                deleted_ts = event["deleted_ts"]
+                logger.info("Deleted message: {}".format(deleted_ts))
+                self.hub.recall_message(self.name, deleted_ts)
+            case MessageEventSubtype.BOT_MESSAGE:
+                ...
+            case _:
+                m = Message(self.name, message_id, username, text)
+                if (ref_id := event.get("thread_ts")) is not None:
+                    self.hub.reply_message(m, ref_id)
+                else:
+                    self.hub.new_message(m)
 
     def send_ack(self, ws: websocket.WebSocketApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
