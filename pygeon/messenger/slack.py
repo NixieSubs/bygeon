@@ -68,7 +68,7 @@ class Slack(Messenger):
 
     def handle_message(self, event: MessageEvent) -> None:
         # XXX
-        subtype = event.get("subtype", "others")
+        subtype = event.get("subtype", "no_subtype")
         message_id = event["ts"]
         text = event["text"]
         username = self.get_username(event["user"])

@@ -27,7 +27,7 @@ class MessageEventSubtype(Enum):
 
     # Non-existent in WebSocket event
     MESSAGE_REPLIED = "message_replied"
-    OTHERS = "others"
+    NO_SUBTYPE = "no_subtype"
 
 
 class Attachment(TypedDict):
