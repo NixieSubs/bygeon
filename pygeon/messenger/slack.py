@@ -3,16 +3,19 @@ from websocket import WebSocketApp as WSApp
 import threading
 import requests
 import orjson
+import os
 
-from typing import cast
+from typing import Tuple, cast, List
+import util
 
 from hub import Hub
-from message import Message
+from message import Message, Attachment
 from .messenger import Messenger
 from .definition.slack import Endpoints, Event, WSMessage, WSMessageType
-from .definition.slack import MessageEventSubtype, MessageEvent, EventType
+from .definition.slack import MessageEventSubtype, MessageEvent, EventType, File
 
-import colorlog as cl
+websocket.enableTrace(True)
+
 
 class Slack(Messenger):
     def __init__(
@@ -42,7 +45,7 @@ class Slack(Messenger):
         ws_message: WSMessage = orjson.loads(message)
         ws_type = ws_message["type"]
 
-        match WSMessageType(ws_type):
+        match ws_type:
             case WSMessageType.HELLO:
                 pass
             # FIXME
@@ -55,7 +58,7 @@ class Slack(Messenger):
 
     def handle_event(self, event: Event) -> None:
         event_type = event["type"]
-        match EventType(event_type):
+        match event_type:
             case EventType.MESSAGE:
                 event = cast(MessageEvent, event)
                 self.handle_message(event)
@@ -71,7 +74,7 @@ class Slack(Messenger):
         if event["channel"] != self.channel_id:
             return None
         # username = self.get_username(user_id)
-        match MessageEventSubtype(subtype):
+        match subtype:
             case MessageEventSubtype.MESSAGE_DELETED:
                 deleted_ts = event["deleted_ts"]
                 self.logger.info("Deleted message: {}".format(deleted_ts))
@@ -88,6 +91,27 @@ class Slack(Messenger):
                     self.hub.reply_message(m, ref_id)
                 else:
                     self.hub.new_message(m)
+            case MessageEventSubtype.FILE_SHARE:
+                attachments = self.get_attachments(event)
+                username = self.get_username(user_id)
+                m = Message(self.name, message_id, username, text, attachments)
+                self.hub.new_message(m)
+
+
+
+    def get_attachments(self, event) -> list:
+        files: List[File] = event.get("files", [])
+        attachment = []
+        for file in files:
+            fn = self.cache_prefix(file["id"]) + file["name"]
+            self.logger.info("Downloading file: {}".format(fn))
+            url = file["url_private_download"]
+            t = file["mimetype"]
+            path = self.generate_cache_path(self.hub.name)
+            file_path = util.download_to_cache(url, path, fn, headers=self.get_headers(self.bot_token))
+            a = Attachment(fn, t, file_path)
+            attachment.append(a)
+        return attachment
 
     def send_ack(self, ws: WSApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
@@ -123,7 +147,6 @@ class Slack(Messenger):
         return websocket_url
 
     def send_message(self, m: Message, ref_id=None) -> None:
-
         payload = {
             "type": "message",
             "username": m.author_username,
@@ -132,11 +155,12 @@ class Slack(Messenger):
         }
         if ref_id is not None:
             payload["thread_ts"] = ref_id
-
+        if len(m.attachments) != 0:
+            self.upload_files(m)
         self.logger.info("Sending message: {}".format(m.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
-            data=payload,
+            json=payload,
             headers=self.get_headers(self.bot_token),
         )
         response = orjson.loads(r.text)
@@ -144,6 +168,30 @@ class Slack(Messenger):
             self.logger.error(response)
 
         self.hub.update_entry(m, self.name, response["ts"])
+
+    # return last id as message id
+    def upload_files(self, m: Message):
+        payload = {"channels": self.channel_id}
+
+        attachments = m.attachments
+
+        headers = self.get_headers(self.bot_token)
+        headers.pop("Content-Type")
+        for attachment in attachments:
+            fn = attachment.name
+            a_type = attachment.type
+            file = {"file": (fn, open(attachment.file_path, "rb"), a_type)}
+            self.logger.info(attachment.file_path)
+            r = requests.post(
+                Endpoints.FILE_UPLOAD,
+                headers=headers,
+                data=payload,
+                files=file,
+            )
+            response = orjson.loads(r.text)
+            if not response["ok"]:
+                self.logger.error(response)
+
 
     def recall_message(self, message_id: str) -> None:
         payload = {
