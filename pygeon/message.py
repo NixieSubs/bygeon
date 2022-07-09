@@ -1,12 +1,10 @@
-from typing import NamedTuple, List
+from typing import NamedTuple, List, Optional
 from enum import Enum
 
 class AttachmentType(Enum):
     IMAGE = "image"
     VIDEO = "video"
     AUDIO = "audio"
-    FILE = "file"
-    STICKER = "sticker"
 
 class Attachment(NamedTuple):
     type: str

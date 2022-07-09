@@ -59,10 +59,11 @@ class Hub:
         orig = message.origin
         sql = f'SELECT * FROM "messages" WHERE "{orig}" = \'{reply_to}\''
         cur = self.cur.execute(sql)
+
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
-                    util.run_in_thread(client.send_reply, (message, row[i]))
+                    util.run_in_thread(client.send_message, (message, row[i]))
         print(self.cur.execute(sql))
 
     def recall_message(self, orig: str, recalled_id: str) -> None:

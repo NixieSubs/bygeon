@@ -3,22 +3,22 @@ import threading
 import requests
 import orjson
 import time
-from typing import cast, List
+from typing import cast, List, Union
 import os
+from io import BytesIO, BufferedReader
 
 from hub import Hub
 from message import Message, Attachment, AttachmentType
 from .messenger import Messenger
-from .definition.discord import Opcode, EventName, WebsocketMessage
-from .definition.discord import MessageCreateEvent, ReadyEvent, Hello, MessageDeleteEvent
+from .definition.discord import Opcode, EventName, WebsocketMessage, Endpoints
+from .definition.discord import (
+    MessageCreateEvent,
+    ReadyEvent,
+    Hello,
+    MessageDeleteEvent,
+)
 
 import util
-
-
-class Endpoints:
-    GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
-    SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
-    DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
 
 
 class Discord(Messenger):
@@ -27,6 +27,7 @@ class Discord(Messenger):
         self.channel_id = channel_id
         self.hub = hub
         self.logger = self.get_logger()
+
     @property
     def headers(self):
         return {"Authorization": f"Bot {self.token}"}
@@ -66,9 +67,6 @@ class Discord(Messenger):
             case Opcode.HEARTBEAT:
                 # TODO
                 pass
-            case 1:
-                # TODO
-                pass
             case Opcode.DISPATCH:
                 self.handle_dispatch(ws_message)
             case _:
@@ -85,7 +83,7 @@ class Discord(Messenger):
                 message_id = delete_event["id"]
                 self.hub.recall_message(self.name, message_id)
             case EventName.READY:
-                ready_event = cast (ReadyEvent, ws_message["d"])
+                ready_event = cast(ReadyEvent, ws_message["d"])
                 self.handle_ready(ready_event)
             case _:
                 pass
@@ -98,8 +96,6 @@ class Discord(Messenger):
 
     def handle_message_create(self, data: MessageCreateEvent) -> None:
         if data.get("channel_id") != self.channel_id:
-            self.logger.error(data.get("channel_id"))
-            self.logger.info(self.channel_id)
             return None
         elif data["author"].get("id") == self.bot_id:
             return None
@@ -111,28 +107,25 @@ class Discord(Messenger):
 
         author = data["author"]
         username = author["username"]
-
+        attachments: List[Attachment] = []
         for attachment in data["attachments"]:
             url = attachment["url"]
 
             filename = attachment["filename"]
             filename = f"{self.name}_{filename}"
-            attachments:List[Attachment] = []
-            if attachment["content_type"].startswith("image"):
-                a_type = AttachmentType.IMAGE
+
+            full_type = attachment["content_type"]
+
             path = self.generate_cache_path(self.hub.name)
             file_path = util.download_to_cache(url, path, filename)
-            attachments.append(Attachment(a_type.value, file_path))
+            attachments.append(Attachment(full_type, file_path))
 
         m = Message(self.name, origin_id, username, text, attachments)
-
-        author = data["author"]
-        if not author.get("bot"):
-            if data["referenced_message"] is not None:
-                ref_id = data["referenced_message"]["id"]
-                self.handle_reply(m, ref_id)
-            else:
-                self.hub.new_message(m)
+        if data["referenced_message"] is not None:
+            ref_id = data["referenced_message"]["id"]
+            self.hub.reply_message(m, ref_id)
+        else:
+            self.hub.new_message(m)
 
     def recall_message(self, message_id: str) -> None:
         r = requests.delete(
@@ -142,57 +135,57 @@ class Discord(Messenger):
         self.logger.info("Trying to recall: " + message_id)
         self.logger.info(r.json())
 
-    def send_reply(self, message: Message, ref_id: str) -> None:
-        payload = {
-            "content": f"[{message.author_username}]: {message.text}",
-            "message_reference": {
-                "message_id": ref_id,
-            },
+    def send_message(self, m: Message, ref_id=None) -> None:
+        payload: dict[str, Union[str, dict]] = {
+            "content": f"[{m.author_username}]: {m.text}"
         }
-        r = requests.post(
-            Endpoints.SEND_MESSAGE.format(self.channel_id),
-            json=payload,
-            headers=self.headers,
-        )
-        if r.status_code != 200:
-            self.logger.error(r.json())
-        else:
-            self.logger.info(r.json())
-        message_id: str = r.json()["id"]
-        self.hub.update_entry(message, self.name, message_id)
-
-    def send_message(self, message: Message) -> None:
-        payload = {"content": f"[{message.author_username}]: {message.text}"}
+        if ref_id is not None:
+            payload["message_reference"] = {
+                "channel_id": self.channel_id,
+                "message_id": ref_id,
+            }
 
         files = []
-        for (i, attachment) in enumerate(message.attachments):
+        for (i, attachment) in enumerate(m.attachments):
             fn = os.path.basename(attachment.file_path)
+            a_type = attachment.type
             files.append(
-                (f"files[{i}]", (fn,  open(attachment.file_path, "rb"), 'image/png'))
+                (f"files[{i}]", (fn, open(attachment.file_path, "rb"), a_type))
             )
 
+        if len(files) > 0:
+            # XXX
+            payload_io = BytesIO(orjson.dumps(payload))
+            files.append(
+                ("payload_json", (None, payload_io, "application/json"))
+            )
+            r = requests.post(
+                Endpoints.SEND_MESSAGE.format(self.channel_id),
+                headers=self.headers,
+                files=files,
+            )
+        else:
+            r = requests.post(
+                Endpoints.SEND_MESSAGE.format(self.channel_id),
+                json=payload,
+                headers=self.headers,
+            )
 
-        r = requests.post(
-            Endpoints.SEND_MESSAGE.format(self.channel_id),
-            data=payload,
-            headers=self.headers,
-            files=files
-        )
         if r.status_code != 200:
             self.logger.error(r.json())
         else:
             self.logger.info(r.json())
 
         message_id: str = r.json()["id"]
-        self.hub.update_entry(message, self.name, message_id)
+        self.hub.update_entry(m, self.name, message_id)
 
     def send_identity(self, ws: WSApp) -> None:
-        payload = self.get_identity_payload
+        payload = self.identity_payload
         print(payload)
         ws.send(payload)
 
     @property
-    def get_identity_payload(self) -> bytes:
+    def identity_payload(self) -> bytes:
         payload = {
             "op": Opcode.IDENTIFY.value,
             "d": {

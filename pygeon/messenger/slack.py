@@ -83,7 +83,7 @@ class Slack(Messenger):
 
             case MessageEventSubtype.NO_SUBTYPE:
                 username = self.get_username(user_id)
-                m = Message(self.name, message_id, username, text)
+                m = Message(self.name, message_id, username, text, [])
                 if (ref_id := event.get("thread_ts")) is not None:
                     self.hub.reply_message(m, ref_id)
                 else:
@@ -122,31 +122,28 @@ class Slack(Messenger):
 
         return websocket_url
 
-    def send_reply(self, message: Message, ref_id: str) -> None:
-        self.logger.info("Sending message: {}".format(message.text))
+    def send_message(self, m: Message, ref_id=None) -> None:
+
+        payload = {
+            "type": "message",
+            "username": m.author_username,
+            "channel": self.channel_id,
+            "text": m.text,
+        }
+        if ref_id is not None:
+            payload["thread_ts"] = ref_id
+
+        self.logger.info("Sending message: {}".format(m.text))
         r = requests.post(
             Endpoints.POST_MESSAGE,
-            data=self.get_message_payload(message, ref_id),
-            headers=self.get_headers(self.bot_token),
-        )
-        response = orjson.loads(r.text)
-        self.logger.debug(response)
-
-        self.hub.update_entry(message, self.name, response["ts"])
-
-    def send_message(self, message: Message) -> None:
-
-        self.logger.info("Sending message: {}".format(message.text))
-        r = requests.post(
-            Endpoints.POST_MESSAGE,
-            data=self.get_message_payload(message),
+            data=payload,
             headers=self.get_headers(self.bot_token),
         )
         response = orjson.loads(r.text)
         if not response["ok"]:
             self.logger.error(response)
 
-        self.hub.update_entry(message, self.name, response["ts"])
+        self.hub.update_entry(m, self.name, response["ts"])
 
     def recall_message(self, message_id: str) -> None:
         payload = {
@@ -179,17 +176,6 @@ class Slack(Messenger):
         r = requests.get(Endpoints.AUTH_TEST, headers=headers)
         bot_info = orjson.loads(r.text)
         return bot_info["user_id"]
-
-    def get_message_payload(self, m: Message, ref_id: str = None) -> bytes:
-        payload = {
-            "type": "message",
-            "username": m.author_username,
-            "channel": self.channel_id,
-            "text": m.text,
-        }
-        if ref_id is not None:
-            payload["thread_ts"] = ref_id
-        return orjson.dumps(payload)
 
     def get_headers(self, token) -> dict:
         return {

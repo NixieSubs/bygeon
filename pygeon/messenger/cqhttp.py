@@ -7,47 +7,10 @@ import threading
 import orjson
 import requests
 
-from typing import TypedDict, List
-from enum import Enum
+from .definition.cqhttp import WSMessage, PostType
+
+from typing import TypedDict, List, Union, cast
 import util
-
-
-class PostType(Enum):
-    META_EVENT = "meta_event"
-    MESSAGE = "message"
-    NOTICE = "notice"
-
-
-class MetaEventType(Enum):
-    HEARTBEAT = "heartbeat"
-
-
-class MessageType(Enum):
-    GROUP = "group"
-
-
-class Sender(TypedDict):
-    nickname: str
-    user_id: int
-
-
-class CQData(TypedDict):
-    id: str
-    text: str
-
-
-class CQMessage(TypedDict):
-    type: str
-    data: CQData
-
-
-class WSMessage(TypedDict):
-    post_type: str
-    meta_event_type: str
-    message_type: str
-    sender: Sender
-    message_id: str
-    message: List[CQMessage]
 
 
 class CQHttp(Messenger):
@@ -102,7 +65,8 @@ class CQHttp(Messenger):
                     elif d["type"] == "text":
                         text += d["data"]["text"]
                     elif d["type"] == "image":
-                        url = d["data"]["url"]
+                        url = d["data"].get("url", "")
+                        url = cast(str, url)
                         filename = d["data"]["file"]
                         filename = f"{self.name}_{filename}"
                         path = self.generate_cache_path(self.hub.name)
@@ -129,34 +93,32 @@ class CQHttp(Messenger):
     def reconnect(self) -> None:
         ...
 
-    def send_reply(self, message: Message, ref_id: str) -> None:
-        payload = {
-            "group_id": self.group_id,
-            "message": f"[CQ:reply,id={ref_id}] {message.text}",
-        }
-        r = requests.post(self.api_url, json=payload)
-        response = r.json()
-        self.hub.update_entry(message, self.name, response["data"]["message_id"])
-        self.logger.error(r.json())
-
-    def send_message(self, message: Message) -> None:
-        payload = {
+    def send_message(self, m: Message, ref_id=None) -> None:
+        payload: dict[str, Union[str, int]] = {
             "group_id": self.group_id,
             "message": "",
         }
-        for attachment in message.attachments:
-            payload["message"] += f"[CQ:{attachment.type},file=file:{attachment.file_path}]"
-        payload["message"] += f"[{message.author_username}]: {message.text}"
+        message_string = ""
+        for attachment in m.attachments:
+            main_type = attachment.type.split("/")[0]
+            message_string += f"[CQ:{main_type},file=file:{attachment.file_path}]"
+
+        self.logger.info(ref_id)
+        if ref_id is not None:
+            message_string += f"[CQ:reply,id={ref_id}]"
+        message_string += f"[{m.author_username}]: {m.text}"
+        self.logger.info(message_string)
+        payload["message"] = message_string
         self.logger.info(payload)
 
         r = requests.post(self.api_url, json=payload)
         self.logger.info(r.text)
 
         response = r.json()
-        self.hub.update_entry(message, self.name, response["data"]["message_id"])
+        self.hub.update_entry(m, self.name, response["data"]["message_id"])
 
     def start(self) -> None:
-        self.ws = websocket.WebSocketApp(
+        self.ws = WSApp(
             self.gateway_url,
             on_open=self.on_open,
             on_message=self.on_message,
