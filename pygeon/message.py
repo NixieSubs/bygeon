@@ -7,6 +7,7 @@ class AttachmentType(Enum):
     AUDIO = "audio"
 
 class Attachment(NamedTuple):
+    name: str
     type: str
     file_path: str
 

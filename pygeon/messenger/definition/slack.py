@@ -10,19 +10,20 @@ class Endpoints:
     CHAT_DELETE = "https://slack.com/api/chat.delete"
     BOTS_INFO = "https://slack.com/api/bots.info"
     AUTH_TEST = "https://slack.com/api/auth.test"
+    FILE_UPLOAD = "https://slack.com/api/files.upload"
 
 
-class WSMessageType(Enum):
+class WSMessageType:
     HELLO = "hello"
     DISCONNECT = "disconnect"
     EVENTS_API = "events_api"
 
 
-class EventType(Enum):
+class EventType:
     MESSAGE = "message"
 
 
-class MessageEventSubtype(Enum):
+class MessageEventSubtype:
     BOT_MESSAGE = "bot_message"
     MESSAGE_CHANGED = "message_changed"
     MESSAGE_DELETED = "message_deleted"
@@ -30,10 +31,15 @@ class MessageEventSubtype(Enum):
     # Non-existent in WebSocket event
     MESSAGE_REPLIED = "message_replied"
     NO_SUBTYPE = "no_subtype"
+    FILE_SHARE = "file_share"
 
 
-class Attachment(TypedDict):
-    pass
+class File(TypedDict):
+    id: str
+    mimetype: str
+    name: str
+    title: str
+    url_private_download: str
 
 class Event(TypedDict):
     type: str
@@ -48,7 +54,7 @@ class MessageEvent(Event):
 
     # Use this to create a reply thread
     ts: str
-    attachment: NotRequired[List[Attachment]]
+    files: NotRequired[List[File]]
 
 
 class Element(TypedDict):

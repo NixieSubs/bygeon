@@ -8,8 +8,8 @@ def run_in_thread(func: Callable, args: tuple):
     thread = Thread(target=func,args=args)
     thread.start()
 
-def download_to_cache(url: str, directory: str,filename: str):
-    with requests.get(url, stream=True) as r:
+def download_to_cache(url: str, directory: str,filename: str, headers=None):
+    with requests.get(url, stream=True, headers=headers) as r:
         r.raise_for_status()
         content_type = r.headers["content-type"]
 

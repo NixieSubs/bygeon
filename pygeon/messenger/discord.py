@@ -111,14 +111,14 @@ class Discord(Messenger):
         for attachment in data["attachments"]:
             url = attachment["url"]
 
-            filename = attachment["filename"]
-            filename = f"{self.name}_{filename}"
+            fn = attachment["filename"]
+            filename = f"{self.name}_{fn}"
 
             full_type = attachment["content_type"]
 
             path = self.generate_cache_path(self.hub.name)
             file_path = util.download_to_cache(url, path, filename)
-            attachments.append(Attachment(full_type, file_path))
+            attachments.append(Attachment(fn, full_type, file_path))
 
         m = Message(self.name, origin_id, username, text, attachments)
         if data["referenced_message"] is not None:

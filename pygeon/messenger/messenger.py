@@ -42,3 +42,6 @@ class Messenger(Protocol):
 
     def join(self) -> None:
         ...
+
+    def cache_prefix(self, id="") -> str:
+        return f"{self.name}_{id}."

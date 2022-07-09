@@ -67,11 +67,11 @@ class CQHttp(Messenger):
                     elif d["type"] == "image":
                         url = d["data"].get("url", "")
                         url = cast(str, url)
-                        filename = d["data"]["file"]
-                        filename = f"{self.name}_{filename}"
+                        fn = d["data"]["file"]
+                        filename = f"{self.name}_{fn}"
                         path = self.generate_cache_path(self.hub.name)
                         file_path = util.download_to_cache(url, path, filename)
-                        attachments.append(Attachment("image", file_path))
+                        attachments.append(Attachment(fn, "image", file_path))
                 m = Message(self.name, message_id, author, text, attachments)
                 if is_reply:
                     self.hub.reply_message(m, ref_id)

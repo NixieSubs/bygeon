@@ -41,8 +41,8 @@ if __name__ == "__main__":
             )
 
             hub.add_client(cqhttp)
-            hub.init_database(keep_data=keep_data)
-            hub.start()
+        hub.init_database(keep_data=keep_data)
+        hub.start()
 
         for hub in hubs:
             hub.join()
