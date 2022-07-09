@@ -130,3 +130,6 @@ dmypy.json
 
 # config file
 pygeon.toml
+
+# cache
+cache/
