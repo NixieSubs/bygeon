@@ -2,6 +2,11 @@ from typing import Union, List, Optional, TypedDict
 from typing_extensions import NotRequired
 from enum import Enum
 
+class Endpoints:
+    GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
+    SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
+    DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
+
 
 class ReferencedMessage(TypedDict):
     type: int
