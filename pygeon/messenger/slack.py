@@ -1,20 +1,18 @@
 import websocket
 from websocket import WebSocketApp as WSApp
+
+from typing import cast, List
 import threading
+
 import requests
 import orjson
-import os
 
-from typing import Tuple, cast, List
 import util
-
 from hub import Hub
 from message import Message, Attachment
 from .messenger import Messenger
-from .definition.slack import Endpoints, Event, WSMessage, WSMessageType
-from .definition.slack import MessageEventSubtype, MessageEvent, EventType, File
-
-websocket.enableTrace(True)
+from .definition.slack import WSMessageType, EventType, MessageEventSubtype
+from .definition.slack import Endpoints, WSMessage, Event, MessageEvent, File
 
 
 class Slack(Messenger):
@@ -97,8 +95,6 @@ class Slack(Messenger):
                 m = Message(self.name, message_id, username, text, attachments)
                 self.hub.new_message(m)
 
-
-
     def get_attachments(self, event) -> list:
         files: List[File] = event.get("files", [])
         attachment = []
@@ -108,7 +104,9 @@ class Slack(Messenger):
             url = file["url_private_download"]
             t = file["mimetype"]
             path = self.generate_cache_path(self.hub.name)
-            file_path = util.download_to_cache(url, path, fn, headers=self.get_headers(self.bot_token))
+            file_path = util.download_to_cache(
+                url, path, fn, headers=self.get_headers(self.bot_token)
+            )
             a = Attachment(fn, t, file_path)
             attachment.append(a)
         return attachment
@@ -191,7 +189,6 @@ class Slack(Messenger):
             response = orjson.loads(r.text)
             if not response["ok"]:
                 self.logger.error(response)
-
 
     def recall_message(self, message_id: str) -> None:
         payload = {

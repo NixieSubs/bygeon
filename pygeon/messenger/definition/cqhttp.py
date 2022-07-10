@@ -1,15 +1,14 @@
 from typing import TypedDict, List
 from typing_extensions import NotRequired
-from enum import Enum
 
 
-class PostType(Enum):
+class PostType:
     META_EVENT = "meta_event"
     MESSAGE = "message"
     NOTICE = "notice"
 
 
-class CQType(Enum):
+class CQType:
     TEXT = "text"
     IMAGE = "image"
     RECORD = "record"
@@ -19,11 +18,11 @@ class CQType(Enum):
 ATTACHMENT_TYPES = [CQType.IMAGE, CQType.VIDEO, CQType.RECORD]
 
 
-class MetaEventType(Enum):
+class MetaEventType:
     HEARTBEAT = "heartbeat"
 
 
-class MessageType(Enum):
+class MessageType:
     GROUP = "group"
 
 

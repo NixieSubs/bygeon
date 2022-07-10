@@ -1,15 +1,15 @@
-from .messenger import Messenger
-import websocket
 from websocket import WebSocketApp as WSApp
-from hub import Hub
-from message import Message, Attachment
+
 import threading
 import orjson
 import requests
 
-from .definition.cqhttp import WSMessage, PostType
+from typing import Union, cast
 
-from typing import TypedDict, List, Union, cast
+from hub import Hub
+from message import Message, Attachment
+from .definition.cqhttp import WSMessage, PostType
+from .messenger import Messenger
 import util
 
 
@@ -48,7 +48,7 @@ class CQHttp(Messenger):
         post_type = ws_message["post_type"]
         is_reply = False
         message_group_id = ws_message.get("group_id")
-        match PostType(post_type):
+        match post_type:
             case PostType.MESSAGE:
                 if message_group_id != self.group_id:
                     return None

@@ -31,7 +31,7 @@ class Messenger(Protocol):
     def name(self) -> str:
         return self.__class__.__name__
 
-    def send_message(self, message: Message, ref_id=None) -> None:
+    def send_message(self, m: Message, ref_id=None) -> None:
         ...
 
     def recall_message(self, message_id: str) -> None:

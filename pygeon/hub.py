@@ -1,13 +1,11 @@
+from typing import List
+from pypika import Query, Column, Table
 import sqlite3
+
 from messenger.messenger import Messenger
 from message import Message
 
-import threading
 import util
-
-from typing import Callable, List
-
-from pypika import Query, Column, Table
 
 
 class Hub:
@@ -44,26 +42,25 @@ class Hub:
 
     # FIXME
     def update_entry(
-        self, message: Message, sent_messenger: str, sent_id: str
+        self, m: Message, sent_messenger: str, sent_id: str
     ) -> None:  # noqa
-        m = message
-        sql = f'UPDATE "messages" SET "{sent_messenger}" = \'{sent_id}\' WHERE "{message.origin}" = \'{m.origin_id}\''  # noqa
+        sql = f'UPDATE "messages" SET "{sent_messenger}" = \'{sent_id}\' WHERE "{m.origin}" = \'{m.origin_id}\''  # noqa
         # q = Query.update(self.table).set(sent_messenger, sent_id).where(m.origin == m.origin_id) # noqa
         self.execute_sql(sql)
 
     def add_client(self, client):
         self.clients.append(client)
 
-    def reply_message(self, message: Message, reply_to: str) -> None:
-        self.new_entry(message)
-        orig = message.origin
+    def reply_message(self, m: Message, reply_to: str) -> None:
+        self.new_entry(m)
+        orig = m.origin
         sql = f'SELECT * FROM "messages" WHERE "{orig}" = \'{reply_to}\''
         cur = self.cur.execute(sql)
 
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
-                    util.run_in_thread(client.send_message, (message, row[i]))
+                    util.run_in_thread(client.send_message, (m, row[i]))
         print(self.cur.execute(sql))
 
     def recall_message(self, orig: str, recalled_id: str) -> None:

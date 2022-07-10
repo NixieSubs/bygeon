@@ -1,6 +1,5 @@
 from typing import Union, List, Optional, TypedDict
 from typing_extensions import NotRequired
-from enum import Enum
 
 class Endpoints:
     GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
@@ -160,7 +159,7 @@ class WebsocketMessage(TypedDict):
     d: Union[MessageCreateEvent, ReadyEvent, Hello, MessageDeleteEvent]
 
 
-class Opcode(Enum):
+class Opcode:
     DISPATCH = 0
     HEARTBEAT = 1
     IDENTIFY = 2
@@ -171,7 +170,7 @@ class Opcode(Enum):
     HEARTBEAT_ACK = 11
 
 
-class EventName(Enum):
+class EventName:
     MESSAGE_CREATE = "MESSAGE_CREATE"
     MESSAGE_UPDATE = "MESSAGE_UPDATE"
     MESSAGE_DELETE = "MESSAGE_DELETE"

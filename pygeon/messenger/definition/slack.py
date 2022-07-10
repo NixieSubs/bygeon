@@ -1,5 +1,4 @@
-from enum import Enum
-from typing import List, TypedDict, Union
+from typing import List, TypedDict
 from typing_extensions import NotRequired
 
 

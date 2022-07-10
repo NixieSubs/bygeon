@@ -5,10 +5,10 @@ import orjson
 import time
 from typing import cast, List, Union
 import os
-from io import BytesIO, BufferedReader
+from io import BytesIO
 
 from hub import Hub
-from message import Message, Attachment, AttachmentType
+from message import Message, Attachment
 from .messenger import Messenger
 from .definition.discord import Opcode, EventName, WebsocketMessage, Endpoints
 from .definition.discord import (
@@ -56,7 +56,7 @@ class Discord(Messenger):
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
 
-        match Opcode(opcode):
+        match opcode:
             case Opcode.HELLO:
                 hello = cast(Hello, ws_message["d"])
                 heartbeat_interval = hello["heartbeat_interval"]
@@ -73,8 +73,8 @@ class Discord(Messenger):
                 pass
 
     def handle_dispatch(self, ws_message: WebsocketMessage) -> None:
-        type = ws_message["t"]
-        match EventName(type):
+        t = ws_message["t"]
+        match t:
             case EventName.MESSAGE_CREATE:
                 create_event = cast(MessageCreateEvent, ws_message["d"])
                 self.handle_message_create(create_event)
@@ -187,7 +187,7 @@ class Discord(Messenger):
     @property
     def identity_payload(self) -> bytes:
         payload = {
-            "op": Opcode.IDENTIFY.value,
+            "op": Opcode.IDENTIFY,
             "d": {
                 "token": self.token,
                 "properties": {
