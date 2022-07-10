@@ -1,12 +1,12 @@
 [project]
 name = "bygeon"
-version = "0.0.1"
+version = "0.0.2"
 authors = [
   { name="dummyx", email="pygeon@gmx.com" },
 ]
 description = "A simple tool for syncing messages between multiple IMs"
 readme = "README.md"
-license = { file="LICENSE" }
+license = "AGPL-3.0"
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pipx = "pygeon.main"
+pipx = "bygeon.main"
 
 [project.urls]
 "Homepage" = "https://github.com/dummyx/bygeon"
