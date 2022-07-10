@@ -2,10 +2,10 @@ from typing import List
 from pypika import Query, Column, Table
 import sqlite3
 
-from messenger.messenger import Messenger
-from message import Message
+from .messenger.messenger import Messenger
+from .message import Message
 
-import util
+import bygeon.util as util
 
 
 class Hub:

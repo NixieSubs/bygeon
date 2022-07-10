@@ -1,5 +1,5 @@
 from typing import Protocol
-from message import Message
+from bygeon.message import Message
 import os
 import colorlog as cl
 import logging

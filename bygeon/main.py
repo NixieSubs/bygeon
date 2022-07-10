@@ -1,8 +1,8 @@
 import tomli
-from messenger.slack import Slack
-from messenger.discord import Discord
-from messenger.cqhttp import CQHttp
-from hub import Hub
+from .messenger.slack import Slack
+from .messenger.discord import Discord
+from .messenger.cqhttp import CQHttp
+from .hub import Hub
 from typing import List
 
 def main():

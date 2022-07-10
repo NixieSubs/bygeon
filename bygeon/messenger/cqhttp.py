@@ -7,11 +7,11 @@ import requests
 from typing import Union, cast
 from urllib.parse import urljoin
 
-from hub import Hub
-from message import Message, Attachment
+from bygeon.hub import Hub
+from bygeon.message import Message, Attachment
 from .definition.cqhttp import WSMessage, PostType, Endpoints
 from .messenger import Messenger
-import util
+import bygeon.util as util
 
 
 

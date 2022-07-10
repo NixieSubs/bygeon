@@ -8,9 +8,9 @@ import threading
 import requests
 import orjson
 
-import util
-from hub import Hub
-from message import Message, Attachment
+import bygeon.util as util
+from bygeon.hub import Hub
+from bygeon.message import Message, Attachment
 from .messenger import Messenger
 from .definition.slack import WSMessageType, EventType, MessageEventSubtype
 from .definition.slack import Endpoints, WSMessage, Event, MessageEvent, File

@@ -7,8 +7,8 @@ from typing import cast, List, Union
 import os
 from io import BytesIO
 
-from hub import Hub
-from message import Message, Attachment
+from bygeon.hub import Hub
+from bygeon.message import Message, Attachment
 from .messenger import Messenger
 from .definition.discord import Opcode, EventName, WebsocketMessage, Endpoints
 from .definition.discord import (
@@ -18,7 +18,7 @@ from .definition.discord import (
     MessageDeleteEvent,
 )
 
-import util
+import bygeon.util as util
 
 
 class Discord(Messenger):
