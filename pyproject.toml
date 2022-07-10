@@ -6,7 +6,7 @@ authors = [
 ]
 description = "A simple tool for syncing messages between multiple IMs"
 readme = "README.md"
-license = "AGPL-3.0"
+license = {text = "AGPL-3.0-only"}
 requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Python :: 3",
