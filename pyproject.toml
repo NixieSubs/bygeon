@@ -1,5 +1,5 @@
 [project]
-name = "pygeon"
+name = "bygeon"
 version = "0.0.1"
 authors = [
   { name="dummyx", email="pygeon@gmx.com" },
@@ -27,5 +27,5 @@ dependencies = [
 pipx = "pygeon.main"
 
 [project.urls]
-"Homepage" = "https://github.com/dummyx/pygeon"
-"Bug Tracker" = "https://github.com/dummyx/pygeon/issues"
+"Homepage" = "https://github.com/dummyx/bygeon"
+"Bug Tracker" = "https://github.com/dummyx/bygeon/issues"
