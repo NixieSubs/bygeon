@@ -2,6 +2,7 @@ import websocket
 from websocket import WebSocketApp as WSApp
 
 from typing import cast, List
+from os.path import basename
 import threading
 
 import requests
@@ -176,7 +177,7 @@ class Slack(Messenger):
         headers = self.get_headers(self.bot_token)
         headers.pop("Content-Type")
         for attachment in attachments:
-            fn = attachment.name
+            fn = basename(attachment.file_path)
             a_type = attachment.type
             file = {"file": (fn, open(attachment.file_path, "rb"), a_type)}
             self.logger.info(attachment.file_path)

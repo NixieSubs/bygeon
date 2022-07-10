@@ -5,31 +5,31 @@ import orjson
 import requests
 
 from typing import Union, cast
+from urllib.parse import urljoin
 
 from hub import Hub
 from message import Message, Attachment
-from .definition.cqhttp import WSMessage, PostType
+from .definition.cqhttp import WSMessage, PostType, Endpoints
 from .messenger import Messenger
 import util
 
 
+
 class CQHttp(Messenger):
     @property
-    def gateway_url(self) -> str:
-        return "ws://localhost:8080/"
-
-    @property
-    def api_url(self) -> str:
-        return "http://localhost:8081/send_group_msg"
+    def send_url(self) -> str:
+        return urljoin(self.http_url, Endpoints.SEND_GROUP_MESSAGE)
 
     @property
     def recall_url(self) -> str:
-        return "http://localhost:8081/delete_msg"
+        return urljoin(self.http_url, Endpoints.DELETE_MESSAGE)
 
-    def __init__(self, group_id: str, hub: Hub) -> None:
+    def __init__(self, group_id: str, hub: Hub, ws_url: str, http_url: str) -> None:
         self.group_id = int(group_id)
         self.hub = hub
         self.logger = self.get_logger()
+        self.ws_url = ws_url
+        self.http_url = http_url
 
     def on_open(self, ws) -> None:
         # TODO
@@ -111,7 +111,7 @@ class CQHttp(Messenger):
         payload["message"] = message_string
         self.logger.info(payload)
 
-        r = requests.post(self.api_url, json=payload)
+        r = requests.post(self.send_url, json=payload)
         self.logger.info(r.text)
 
         response = r.json()
@@ -119,7 +119,7 @@ class CQHttp(Messenger):
 
     def start(self) -> None:
         self.ws = WSApp(
-            self.gateway_url,
+            self.ws_url,
             on_open=self.on_open,
             on_message=self.on_message,
             on_error=self.on_error,
