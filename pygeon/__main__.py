@@ -5,7 +5,7 @@ from messenger.cqhttp import CQHttp
 from hub import Hub
 from typing import List
 
-if __name__ == "__main__":
+def main():
     with open("pygeon.toml", "rb") as f:
         config = tomli.load(f)
 
@@ -53,3 +53,6 @@ if __name__ == "__main__":
 
         for hub in hubs:
             hub.join()
+
+if __name__ == "__main__":
+    main()
