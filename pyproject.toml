@@ -1,6 +1,6 @@
 [project]
 name = "bygeon"
-version = "0.0.2"
+version = "0.0.3"
 authors = [
   { name="dummyx", email="pygeon@gmx.com" },
 ]
@@ -24,7 +24,7 @@ dependencies = [
 ]
 
 [project.scripts]
-pipx = "bygeon.main"
+bygeon = "bygeon.main:main"
 
 [project.urls]
 "Homepage" = "https://github.com/dummyx/bygeon"
