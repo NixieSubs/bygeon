@@ -35,12 +35,19 @@ if __name__ == "__main__":
             )
             hub.add_client(slack)
         if hub_config.get('CQHttp') != None:
+
+            ws_url = hub_config['CQHttp'].get('ws_url', "ws://localhost:8080/")
+            http_url = hub_config['CQHttp'].get('ws_url', "http://localhost:5700/")
+
             cqhttp = CQHttp(
                 group_id=hub_config['CQHttp']['group_id'],
-                hub=hub
+                hub=hub,
+                ws_url=ws_url,
+                http_url=http_url
             )
 
             hub.add_client(cqhttp)
+
         hub.init_database(keep_data=keep_data)
         hub.start()
 
