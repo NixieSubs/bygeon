@@ -2,6 +2,11 @@ from typing import TypedDict, List
 from typing_extensions import NotRequired
 
 
+class Endpoints:
+    SEND_GROUP_MESSAGE = "send_group_msg"
+    DELETE_MESSAGE = "delete_msg"
+
+
 class PostType:
     META_EVENT = "meta_event"
     MESSAGE = "message"
