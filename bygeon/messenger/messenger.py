@@ -49,7 +49,7 @@ class Messenger(Protocol):
     def send_message(self, m: Message, ref_id=None) -> None:
         ...
 
-    def modify_message(self, message_id: str, text: str) -> None:
+    def modify_message(self, m: Message, m_id: str) -> None:
         ...
 
     def recall_message(self, message_id: str) -> None:

@@ -38,6 +38,7 @@ class Slack(Messenger):
         self._on_close(ws, close_status_code, close_msg)
 
     def on_message(self, ws: WSApp, message: str):
+        self.logger.debug(message)
         ws_message: WSMessage = orjson.loads(message)
         ws_type = ws_message["type"]
 
@@ -68,7 +69,12 @@ class Slack(Messenger):
         subtype = event.get("subtype", "no_subtype")
         message_id = event["ts"]
         text = event["text"]
-        user_id = event["user"]
+        user_id = event.get("user")
+
+        if user_id is None:
+            username = event.get("username", "")
+        else:
+            username = self.get_username(user_id)
 
         if event["channel"] != self.channel_id:
             return None
@@ -84,7 +90,7 @@ class Slack(Messenger):
                     return None
 
             case MessageEventSubtype.NO_SUBTYPE:
-                username = self.get_username(user_id)
+
                 m = Message(self.name, message_id, username, text, [])
                 if (ref_id := event.get("thread_ts")) is not None:
                     self.hub.reply_message(m, ref_id)
@@ -92,9 +98,12 @@ class Slack(Messenger):
                     self.hub.new_message(m)
             case MessageEventSubtype.FILE_SHARE:
                 attachments = self.get_attachments(event)
-                username = self.get_username(user_id)
                 m = Message(self.name, message_id, username, text, attachments)
                 self.hub.new_message(m)
+            case MessageEventSubtype.MESSAGE_CHANGED:
+                self.logger.info(event)
+                m = Message(self.name, message_id, username, text, [])
+                self.hub.modify_message(m)
 
     def get_attachments(self, event) -> list:
         files: List[File] = event.get("files", [])
@@ -203,6 +212,19 @@ class Slack(Messenger):
             headers=self.get_headers(self.bot_token),
         )
         self.logger.info("Trying to recall: " + message_id)
+
+    def modify_message(self, m: Message, m_id: str) -> None:
+        payload = {
+            "token": self.bot_token,
+            "channel": self.channel_id,
+            "ts": m_id,
+            "text": m.text,
+        }
+        requests.post(
+            Endpoints.CHAT_UPDATE,
+            json=payload,
+            headers=self.get_headers(self.bot_token),
+        )
 
     def start(self) -> None:
         self.ws = WSApp(

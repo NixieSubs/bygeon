@@ -10,6 +10,7 @@ class Endpoints:
     BOTS_INFO = "https://slack.com/api/bots.info"
     AUTH_TEST = "https://slack.com/api/auth.test"
     FILE_UPLOAD = "https://slack.com/api/files.upload"
+    CHAT_UPDATE = "https://slack.com/api/chat.update"
 
 
 class WSMessageType:
@@ -40,9 +41,11 @@ class File(TypedDict):
     title: str
     url_private_download: str
 
+
 class Event(TypedDict):
     type: str
     subtype: NotRequired[str]
+
 
 class MessageEvent(Event):
     channel: str
@@ -77,8 +80,6 @@ class PinAddedEvent(TypedDict):
 
 class UserProfileChangedEvent(TypedDict):
     pass
-
-
 
 
 class Payload(TypedDict):

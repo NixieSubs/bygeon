@@ -54,3 +54,5 @@ class WSMessage(TypedDict):
     sender: Sender
     message_id: str
     message: List[CQMessage]
+    self_id: NotRequired[int]
+    user_id: NotRequired[int]

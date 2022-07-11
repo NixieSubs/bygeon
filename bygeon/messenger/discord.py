@@ -13,7 +13,13 @@ import bygeon.util as util
 from bygeon.hub import Hub
 from bygeon.message import Message, Attachment
 from .messenger import Messenger
-from .definition.discord import Opcode, EventName, WebsocketMessage, Endpoints
+from .definition.discord import (
+    MessageUpdateEvent,
+    Opcode,
+    EventName,
+    WebsocketMessage,
+    Endpoints,
+)
 from .definition.discord import (
     MessageCreateEvent,
     ReadyEvent,
@@ -27,6 +33,8 @@ class Discord(Messenger):
         self.token = bot_token
         self.channel_id = channel_id
         self.hub = hub
+        self.sequence = 0
+
         self.logger = self.get_logger()
 
     @property
@@ -43,14 +51,14 @@ class Discord(Messenger):
         self._on_close(ws, close_status_code, close_msg)
         self.reconnect()
 
-    def heartbeat(ws: WSApp, interval: int):
+    def heartbeat(self, ws: WSApp, interval: int):
         payload = {
             "op": 1,
             "d": None,
         }
         while True:
             time.sleep(interval / 1000)
-            if ws.sock:
+            if ws.sock is not None:
                 ws.send(orjson.dumps(payload))
             else:
                 break
@@ -78,6 +86,8 @@ class Discord(Messenger):
 
     def handle_dispatch(self, ws_message: WebsocketMessage) -> None:
         t = ws_message["t"]
+        self.sequence = ws_message["s"]
+
         match t:
             case EventName.MESSAGE_CREATE:
                 create_event = cast(MessageCreateEvent, ws_message["d"])
@@ -89,6 +99,13 @@ class Discord(Messenger):
             case EventName.READY:
                 ready_event = cast(ReadyEvent, ws_message["d"])
                 self.handle_ready(ready_event)
+            case EventName.MESSAGE_UPDATE:
+                update_event = cast(MessageUpdateEvent, ws_message["d"])
+                text = update_event["content"]
+                username = update_event["author"]["username"]
+                message_id = update_event["id"]
+                m = Message(self.name, message_id, username, text, [])
+                self.hub.modify_message(m)
             case _:
                 pass
 
@@ -98,6 +115,24 @@ class Discord(Messenger):
 
     def handle_reply(self, m: Message, ref_id: str) -> None:
         self.hub.reply_message(m, ref_id)
+
+    def handle_modify(self, data: MessageUpdateEvent) -> None:
+        message_id = data["id"]
+        author = data["author"]
+        username = author["username"]
+        text = data["content"]
+        m = Message(self.name, message_id, username, text, [])
+        self.hub.modify_message(m)
+        ...
+
+    def modify_message(self, m: Message, m_id: str) -> None:
+        url = Endpoints.EDIT_MESSAGE.format(self.channel_id, m_id)
+
+        payload = {
+            "content": f"[{m.author_username}]: {m.text}",
+        }
+
+        requests.patch(url, headers=self.headers, json=payload)
 
     def handle_message_create(self, data: MessageCreateEvent) -> None:
         if data.get("channel_id") != self.channel_id:

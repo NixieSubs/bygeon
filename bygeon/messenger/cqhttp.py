@@ -48,6 +48,8 @@ class CQHttp(Messenger):
             case PostType.MESSAGE:
                 if message_group_id != self.group_id:
                     return None
+                if ws_message["self_id"] == ws_message["user_id"]:
+                    return None
                 message_id = ws_message["message_id"]
 
                 self.logger.info("Received message: " + message_id)
@@ -79,6 +81,8 @@ class CQHttp(Messenger):
                 else:
                     self.hub.new_message(m)
             case PostType.NOTICE:
+                if ws_message["self_id"] == ws_message["user_id"]:
+                    return None
                 recalled_id = ws_message["message_id"]
                 self.hub.recall_message(self.name, recalled_id)
                 ...
@@ -90,6 +94,12 @@ class CQHttp(Messenger):
         r = requests.post(self.recall_url, json=payload)
         self.logger.info("Trying to recall: " + message_id)
         self.logger.info(r.json())
+
+    def modify_message(self, m: Message, m_id: str) -> None:
+        self.recall_message(m_id)
+
+        self.send_message(m)
+        ...
 
     def reconnect(self) -> None:
         ...

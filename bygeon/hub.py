@@ -63,6 +63,17 @@ class Hub:
                     util.run_in_thread(client.send_message, (m, row[i]))
         print(self.cur.execute(sql))
 
+    def modify_message(self, m: Message) -> None:
+        orig = m.origin
+        sent_id = m.origin_id
+        sql = f'SELECT * FROM "messages" WHERE "{orig}" = \'{sent_id}\''
+        cur = self.cur.execute(sql)
+        for row in cur:
+            for i, client in enumerate(self.clients):
+                if client.name != orig:
+                    util.run_in_thread(client.modify_message, (m, row[i]))
+        ...
+
     def recall_message(self, orig: str, recalled_id: str) -> None:
         sql = f'SELECT * FROM "messages" WHERE "{orig}" = \'{recalled_id}\''
         cur = self.cur.execute(sql)

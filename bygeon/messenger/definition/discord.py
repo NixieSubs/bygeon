@@ -1,10 +1,12 @@
 from typing import Union, List, Optional, TypedDict
 from typing_extensions import NotRequired
 
+
 class Endpoints:
     GATEWAY = "wss://gateway.discord.gg/?v=10&encoding=json"
     SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
     DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
+    EDIT_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
 
 
 class ReferencedMessage(TypedDict):
@@ -129,10 +131,16 @@ class MessageCreateEvent(DiscordMessage):
     guild_id: NotRequired[str]
     # mentions: List[User]
 
+
 class MessageDeleteEvent(TypedDict):
     id: str
     channel_id: str
     guild_id: NotRequired[str]
+
+
+class MessageUpdateEvent(MessageCreateEvent):
+    ...
+
 
 class Hello(TypedDict):
     heartbeat_interval: int
