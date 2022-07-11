@@ -1,12 +1,15 @@
-from websocket import WebSocketApp as WSApp
 import threading
+import time
+from io import BytesIO
+from os.path import basename
+from typing import cast, List, Union
+
+from websocket import WebSocketApp as WSApp
+
 import requests
 import orjson
-import time
-from typing import cast, List, Union
-import os
-from io import BytesIO
 
+import bygeon.util as util
 from bygeon.hub import Hub
 from bygeon.message import Message, Attachment
 from .messenger import Messenger
@@ -17,8 +20,6 @@ from .definition.discord import (
     Hello,
     MessageDeleteEvent,
 )
-
-import bygeon.util as util
 
 
 class Discord(Messenger):
@@ -33,25 +34,28 @@ class Discord(Messenger):
         return {"Authorization": f"Bot {self.token}"}
 
     def on_open(self, ws):
-        print("opened")
+        self._on_open(ws)
 
     def on_error(self, ws, e):
-        print("error")
-        print(e)
+        self._on_error(ws, e)
 
     def on_close(self, ws, close_status_code, close_msg):
-        print("closed")
-        print(close_msg)
+        self._on_close(ws, close_status_code, close_msg)
+        self.reconnect()
+
+    def heartbeat(ws: WSApp, interval: int):
+        payload = {
+            "op": 1,
+            "d": None,
+        }
+        while True:
+            time.sleep(interval / 1000)
+            if ws.sock:
+                ws.send(orjson.dumps(payload))
+            else:
+                break
 
     def on_message(self, ws: WSApp, message: str):
-        def heartbeat(ws: WSApp, interval: int):
-            payload = {
-                "op": 1,
-                "d": None,
-            }
-            while True:
-                time.sleep(interval / 1000)
-                ws.send(orjson.dumps(payload))
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
@@ -62,7 +66,7 @@ class Discord(Messenger):
                 heartbeat_interval = hello["heartbeat_interval"]
                 self.send_identity(ws)
                 threading.Thread(
-                    target=heartbeat, args=(ws, heartbeat_interval)
+                    target=self.heartbeat, args=(ws, heartbeat_interval), daemon=True
                 ).start()
             case Opcode.HEARTBEAT:
                 # TODO
@@ -70,7 +74,7 @@ class Discord(Messenger):
             case Opcode.DISPATCH:
                 self.handle_dispatch(ws_message)
             case _:
-                pass
+                return None
 
     def handle_dispatch(self, ws_message: WebsocketMessage) -> None:
         t = ws_message["t"]
@@ -90,6 +94,7 @@ class Discord(Messenger):
 
     def handle_ready(self, data: ReadyEvent) -> None:
         self.bot_id = data["user"]["id"]
+        self.session_id = data["session_id"]
 
     def handle_reply(self, m: Message, ref_id: str) -> None:
         self.hub.reply_message(m, ref_id)
@@ -121,8 +126,8 @@ class Discord(Messenger):
             attachments.append(Attachment(fn, full_type, file_path))
 
         m = Message(self.name, origin_id, username, text, attachments)
-        if data["referenced_message"] is not None:
-            ref_id = data["referenced_message"]["id"]
+        if (ref_message := data["referenced_message"]) is not None:
+            ref_id = ref_message["id"]
             self.hub.reply_message(m, ref_id)
         else:
             self.hub.new_message(m)
@@ -147,7 +152,7 @@ class Discord(Messenger):
 
         files = []
         for (i, attachment) in enumerate(m.attachments):
-            fn = os.path.basename(attachment.file_path)
+            fn = basename(attachment.file_path)
             a_type = attachment.type
             files.append(
                 (f"files[{i}]", (fn, open(attachment.file_path, "rb"), a_type))
@@ -157,7 +162,10 @@ class Discord(Messenger):
             # XXX
             payload_io = BytesIO(orjson.dumps(payload))
             files.append(
-                ("payload_json", (None, payload_io, "application/json"))
+                (
+                    "payload_json",
+                    (None, payload_io, "application/json"),
+                )  # type: ignore[arg-type]
             )
             r = requests.post(
                 Endpoints.SEND_MESSAGE.format(self.channel_id),
@@ -192,8 +200,8 @@ class Discord(Messenger):
                 "token": self.token,
                 "properties": {
                     "os": "linux",
-                    "browser": "pygeon",
-                    "device": "pygeon",
+                    "browser": "bygeon",
+                    "device": "bygeon",
                 },
                 "large_threshold": 250,
                 "compress": False,

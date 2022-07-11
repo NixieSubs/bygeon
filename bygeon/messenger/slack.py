@@ -1,9 +1,8 @@
-import websocket
-from websocket import WebSocketApp as WSApp
-
-from typing import cast, List
-from os.path import basename
 import threading
+from os.path import basename
+from typing import cast, List
+
+from websocket import WebSocketApp as WSApp
 
 import requests
 import orjson
@@ -30,15 +29,13 @@ class Slack(Messenger):
         self.bot_user_id = self.get_bot_user_id()
 
     def on_open(self, ws) -> None:
-        print("opened")
+        self._on_open(ws)
 
     def on_error(self, ws, e) -> None:
-        print("error")
-        print(e)
+        self._on_error(ws, e)
 
     def on_close(self, ws, close_status_code, close_msg) -> None:
-        print("closed")
-        print(close_msg)
+        self._on_close(ws, close_status_code, close_msg)
 
     def on_message(self, ws: WSApp, message: str):
         ws_message: WSMessage = orjson.loads(message)
@@ -46,9 +43,11 @@ class Slack(Messenger):
 
         match ws_type:
             case WSMessageType.HELLO:
-                pass
+                return None
             # FIXME
             case WSMessageType.DISCONNECT:
+                self.logger.error("Disconnected")
+                self.logger.error("Trying to reconnect")
                 self.reconnect()
             case WSMessageType.EVENTS_API:
                 event = ws_message["payload"]["event"]
@@ -62,7 +61,7 @@ class Slack(Messenger):
                 event = cast(MessageEvent, event)
                 self.handle_message(event)
             case _:
-                pass
+                return None
 
     def handle_message(self, event: MessageEvent) -> None:
         # XXX
@@ -70,9 +69,10 @@ class Slack(Messenger):
         message_id = event["ts"]
         text = event["text"]
         user_id = event["user"]
+
         if event["channel"] != self.channel_id:
             return None
-        # username = self.get_username(user_id)
+
         match subtype:
             case MessageEventSubtype.MESSAGE_DELETED:
                 deleted_ts = event["deleted_ts"]
@@ -114,7 +114,6 @@ class Slack(Messenger):
 
     def send_ack(self, ws: WSApp, message: WSMessage) -> None:
         envelope_id = message["envelope_id"]
-        # payload = message["payload"]
         ws.send(orjson.dumps({"envelope_id": envelope_id}))
 
     def get_username(self, id: str) -> str:
@@ -126,8 +125,9 @@ class Slack(Messenger):
         return username
 
     def reconnect(self) -> None:
-        # TODO
-        pass
+        self.ws.close()
+        self.start()
+        self.join()
 
     def get_websocket_url(self) -> str:
         header = self.get_headers(self.app_token)
@@ -205,7 +205,7 @@ class Slack(Messenger):
         self.logger.info("Trying to recall: " + message_id)
 
     def start(self) -> None:
-        self.ws = websocket.WebSocketApp(
+        self.ws = WSApp(
             self.get_websocket_url(),
             on_open=self.on_open,
             on_message=self.on_message,

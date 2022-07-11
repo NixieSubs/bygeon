@@ -1,18 +1,17 @@
-from websocket import WebSocketApp as WSApp
-
 import threading
-import orjson
-import requests
-
 from typing import Union, cast
 from urllib.parse import urljoin
 
+from websocket import WebSocketApp as WSApp
+
+import orjson
+import requests
+
+import bygeon.util as util
 from bygeon.hub import Hub
 from bygeon.message import Message, Attachment
 from .definition.cqhttp import WSMessage, PostType, Endpoints
 from .messenger import Messenger
-import bygeon.util as util
-
 
 
 class CQHttp(Messenger):
@@ -32,16 +31,13 @@ class CQHttp(Messenger):
         self.http_url = http_url
 
     def on_open(self, ws) -> None:
-        # TODO
-        ...
+        self._on_open(ws)
 
     def on_error(self, ws, e) -> None:
-        # TODO
-        ...
+        self._on_error(ws, e)
 
     def on_close(self, ws, close_status_code, close_msg) -> None:
-        # TODO
-        ...
+        self._on_close(ws, close_status_code, close_msg)
 
     def on_message(self, ws: WSApp, message: str):
         ws_message: WSMessage = orjson.loads(message)
@@ -53,6 +49,9 @@ class CQHttp(Messenger):
                 if message_group_id != self.group_id:
                     return None
                 message_id = ws_message["message_id"]
+
+                self.logger.info("Received message: " + message_id)
+
                 author = ws_message["sender"]["nickname"]
 
                 data = ws_message["message"]
@@ -62,6 +61,8 @@ class CQHttp(Messenger):
                     if d["type"] == "reply":
                         is_reply = True
                         ref_id = d["data"]["id"]
+
+                        self.logger.info("Reply to: " + ref_id)
                     elif d["type"] == "text":
                         text += d["data"]["text"]
                     elif d["type"] == "image":
@@ -107,7 +108,7 @@ class CQHttp(Messenger):
         if ref_id is not None:
             message_string += f"[CQ:reply,id={ref_id}]"
         message_string += f"[{m.author_username}]: {m.text}"
-        self.logger.info(message_string)
+        self.logger.info(f"Sending message with CQCode: {message_string}")
         payload["message"] = message_string
         self.logger.info(payload)
 

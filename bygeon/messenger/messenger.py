@@ -1,9 +1,11 @@
-from typing import Protocol
-from bygeon.message import Message
 import os
 import colorlog as cl
 import logging
+from typing import Protocol
 
+from websocket import WebSocketApp as WSApp
+
+from bygeon.message import Message
 
 logger_format = "%(log_color)s%(levelname)s: %(name)s: %(message)s"
 
@@ -18,6 +20,7 @@ class Messenger(Protocol):
         logger = cl.getLogger(self.name)
         logger.addHandler(handler)
         logger.setLevel(logging.DEBUG)
+
         return logger
 
     @property
@@ -31,7 +34,22 @@ class Messenger(Protocol):
     def name(self) -> str:
         return self.__class__.__name__
 
+    def _on_open(self, ws):
+        self.logger.info("Opened WebSocket connection")
+
+    def _on_error(self, ws, e):
+        self.logger.error(f"WebSocket encountered error: {e}")
+
+    def _on_close(self, ws, close_status_code, close_msg):
+        self.logger.error(f"WebSocket closed: {close_msg}")
+
+    def on_message(self, ws: WSApp, message: str):
+        ...
+
     def send_message(self, m: Message, ref_id=None) -> None:
+        ...
+
+    def modify_message(self, message_id: str, text: str) -> None:
         ...
 
     def recall_message(self, message_id: str) -> None:
