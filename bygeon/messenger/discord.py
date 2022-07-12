@@ -2,7 +2,7 @@ import threading
 import time
 from io import BytesIO
 from os.path import basename
-from typing import cast, List, Union
+from typing import cast, List, Dict, Any, Union, Optional
 
 from websocket import WebSocketApp as WSApp
 
@@ -29,11 +29,15 @@ from .definition.discord import (
 
 
 class Discord(Messenger):
+    session_id: Optional[str]
+    sequence: Optional[int]
+
     def __init__(self, bot_token: str, channel_id: str, hub: Hub) -> None:
         self.token = bot_token
         self.channel_id = channel_id
         self.hub = hub
-        self.sequence = 0
+        self.sequence = None
+        self.session_id = None
 
         self.logger = self.get_logger()
 
@@ -229,7 +233,8 @@ class Discord(Messenger):
 
     @property
     def identity_payload(self) -> bytes:
-        payload = {
+        # XXX
+        payload: Dict[str, Union[dict, Any]] = {
             "op": Opcode.IDENTIFY,
             "d": {
                 "token": self.token,
@@ -243,12 +248,19 @@ class Discord(Messenger):
                 "intents": (1 << 15) + (1 << 9),
             },
         }
+
+        if self.sequence is not None:
+            payload["sequence"] = self.sequence
+        if self.session_id is not None:
+            payload["d"]["session_id"] = self.session_id
+
         return orjson.dumps(payload)
 
     def reconnect(self) -> None:
         # XXX
         self.ws.close()
         self.start()
+        self.join()
 
     def start(self) -> None:
         self.ws = WSApp(
