@@ -52,5 +52,5 @@ def main():
         hub.init_database(keep_data=keep_data)
         hub.start()
 
-        for hub in hubs:
-            hub.join()
+    for hub in hubs:
+        hub.join()
