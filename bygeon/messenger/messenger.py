@@ -34,16 +34,16 @@ class Messenger(Protocol):
     def name(self) -> str:
         return self.__class__.__name__
 
-    def _on_open(self, ws):
+    def _on_open(self, ws) -> None:
         self.logger.info("Opened WebSocket connection")
 
-    def _on_error(self, ws, e):
+    def _on_error(self, ws, e) -> None:
         self.logger.error(f"WebSocket encountered error: {e}")
 
-    def _on_close(self, ws, close_status_code, close_msg):
+    def _on_close(self, ws, close_status_code, close_msg) -> None:
         self.logger.error(f"WebSocket closed: {close_msg}")
 
-    def on_message(self, ws: WSApp, message: str):
+    def on_message(self, ws: WSApp, message: str) -> None:
         ...
 
     def send_message(self, m: Message, ref_id=None) -> None:

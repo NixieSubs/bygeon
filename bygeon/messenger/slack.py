@@ -37,7 +37,7 @@ class Slack(Messenger):
     def on_close(self, ws, close_status_code, close_msg) -> None:
         self._on_close(ws, close_status_code, close_msg)
 
-    def on_message(self, ws: WSApp, message: str):
+    def on_message(self, ws: WSApp, message: str) -> None:
         self.logger.debug(message)
         ws_message: WSMessage = orjson.loads(message)
         ws_type = ws_message["type"]
@@ -75,6 +75,9 @@ class Slack(Messenger):
             username = event.get("username", "")
         else:
             username = self.get_username(user_id)
+
+        # XXX
+        username = cast(str, username)
 
         if event["channel"] != self.channel_id:
             return None
@@ -129,7 +132,7 @@ class Slack(Messenger):
         headers = self.get_headers(self.bot_token)
         r = requests.get(Endpoints.USERS_INFO + "?user=" + id, headers=headers)
         response = orjson.loads(r.text)
-        self.logger.debug(response)
+        self.logger.debug(r.text)
         username = response["user"]["name"]
         return username
 
@@ -178,7 +181,7 @@ class Slack(Messenger):
         self.hub.update_entry(m, self.name, response["ts"])
 
     # return last id as message id
-    def upload_files(self, m: Message):
+    def upload_files(self, m: Message) -> None:
         payload = {"channels": self.channel_id}
 
         attachments = m.attachments

@@ -45,17 +45,17 @@ class Discord(Messenger):
     def headers(self):
         return {"Authorization": f"Bot {self.token}"}
 
-    def on_open(self, ws):
+    def on_open(self, ws) -> None:
         self._on_open(ws)
 
-    def on_error(self, ws, e):
+    def on_error(self, ws, e) -> None:
         self._on_error(ws, e)
 
-    def on_close(self, ws, close_status_code, close_msg):
+    def on_close(self, ws, close_status_code, close_msg) -> None:
         self._on_close(ws, close_status_code, close_msg)
         self.reconnect()
 
-    def heartbeat(self, ws: WSApp, interval: int):
+    def heartbeat(self, ws: WSApp, interval: int) -> None:
         payload = {
             "op": 1,
             "d": None,
@@ -67,7 +67,7 @@ class Discord(Messenger):
             else:
                 break
 
-    def on_message(self, ws: WSApp, message: str):
+    def on_message(self, ws: WSApp, message: str) -> None:
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
@@ -111,7 +111,7 @@ class Discord(Messenger):
                 m = Message(self.name, message_id, username, text, [])
                 self.hub.modify_message(m)
             case _:
-                pass
+                return None
 
     def handle_ready(self, data: ReadyEvent) -> None:
         self.bot_id = data["user"]["id"]
@@ -127,7 +127,6 @@ class Discord(Messenger):
         text = data["content"]
         m = Message(self.name, message_id, username, text, [])
         self.hub.modify_message(m)
-        ...
 
     def modify_message(self, m: Message, m_id: str) -> None:
         url = Endpoints.EDIT_MESSAGE.format(self.channel_id, m_id)
@@ -176,8 +175,7 @@ class Discord(Messenger):
             Endpoints.DELETE_MESSAGE.format(self.channel_id, message_id),
             headers=self.headers,
         )
-        self.logger.info("Trying to recall: " + message_id)
-        self.logger.info(r.json())
+        self.log_response(r)
 
     def send_message(self, m: Message, ref_id=None) -> None:
         payload: dict[str, Union[str, dict]] = {
@@ -218,10 +216,7 @@ class Discord(Messenger):
                 headers=self.headers,
             )
 
-        if r.status_code != 200:
-            self.logger.error(r.json())
-        else:
-            self.logger.info(r.json())
+        self.log_response(r)
 
         message_id: str = r.json()["id"]
         self.hub.update_entry(m, self.name, message_id)
@@ -255,6 +250,12 @@ class Discord(Messenger):
             payload["d"]["session_id"] = self.session_id
 
         return orjson.dumps(payload)
+
+    def log_response(self, r: requests.Response) -> None:
+        if r.status_code != 200:
+            self.logger.error(r.text)
+        else:
+            self.logger.debug(r.text)
 
     def reconnect(self) -> None:
         # XXX

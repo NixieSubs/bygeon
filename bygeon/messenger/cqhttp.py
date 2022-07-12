@@ -39,7 +39,7 @@ class CQHttp(Messenger):
     def on_close(self, ws, close_status_code, close_msg) -> None:
         self._on_close(ws, close_status_code, close_msg)
 
-    def on_message(self, ws: WSApp, message: str):
+    def on_message(self, ws: WSApp, message: str) -> None:
         ws_message: WSMessage = orjson.loads(message)
         post_type = ws_message["post_type"]
         is_reply = False
@@ -85,7 +85,6 @@ class CQHttp(Messenger):
                     return None
                 recalled_id = ws_message["message_id"]
                 self.hub.recall_message(self.name, recalled_id)
-                ...
 
     def recall_message(self, message_id: str) -> None:
         payload = {
