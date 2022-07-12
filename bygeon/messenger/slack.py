@@ -76,6 +76,9 @@ class Slack(Messenger):
         else:
             username = self.get_username(user_id)
 
+        if user_id == self.bot_user_id:
+            return None
+
         # XXX
         username = cast(str, username)
 
@@ -89,8 +92,7 @@ class Slack(Messenger):
                 self.hub.recall_message(self.name, deleted_ts)
 
             case MessageEventSubtype.BOT_MESSAGE:
-                if user_id == self.bot_user_id:
-                    return None
+                ...
 
             case MessageEventSubtype.NO_SUBTYPE:
 
@@ -167,6 +169,7 @@ class Slack(Messenger):
         if ref_id is not None:
             payload["thread_ts"] = ref_id
         if len(m.attachments) != 0:
+            payload["initial_comment"] = m.text
             self.upload_files(m)
         self.logger.info("Sending message: {}".format(m.text))
         r = requests.post(
@@ -178,7 +181,7 @@ class Slack(Messenger):
         if not response["ok"]:
             self.logger.error(response)
 
-        self.hub.update_entry(m, self.name, response["ts"])
+        self.hub.update_entry(m, self.name, response.get("ts"))
 
     # return last id as message id
     def upload_files(self, m: Message) -> None:

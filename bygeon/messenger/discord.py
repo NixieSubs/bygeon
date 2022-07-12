@@ -1,5 +1,6 @@
 import threading
 import time
+import re
 from io import BytesIO
 from os.path import basename
 from typing import cast, List, Dict, Any, Union, Optional
@@ -84,6 +85,7 @@ class Discord(Messenger):
                 # TODO
                 pass
             case Opcode.DISPATCH:
+                self.logger.debug(ws_message)
                 self.handle_dispatch(ws_message)
             case _:
                 return None
@@ -162,6 +164,49 @@ class Discord(Messenger):
             path = self.generate_cache_path(self.hub.name)
             file_path = util.download_to_cache(url, path, filename)
             attachments.append(Attachment(fn, full_type, file_path))
+
+        emoji_regex = r"<:(.+):(\d+)>"
+        emoji_re = re.compile(emoji_regex)
+        emoji_list = emoji_re.findall(text)
+
+        a_emoji_regex = r"<a:(.+):(\d+)>"
+        a_emoji_re = re.compile(a_emoji_regex)
+        a_emoji_list = a_emoji_re.findall(text)
+        for a_emoji_name, a_emoji_id in a_emoji_list:
+            fn = f"{a_emoji_name}_{a_emoji_id}.gif"
+            url = Endpoints.GET_EMOJI.format(a_emoji_id) + ".gif"
+            path = self.generate_cache_path(self.hub.name)
+            file_path = util.download_to_cache(url, path, fn)
+            full_type = "image/gif"
+            attachments.append(Attachment(fn, full_type, file_path))
+            text = text.replace(f"<a:{a_emoji_name}:{a_emoji_id}>", "")
+
+        for emoji_name, emoji_id in emoji_list:
+            fn = f"{emoji_name}_{emoji_id}.png"
+            url = Endpoints.GET_EMOJI.format(emoji_id) + ".png"
+            path = self.generate_cache_path(self.hub.name)
+            file_path = util.download_to_cache(url, path, fn)
+            full_type = "image/png"
+            attachments.append(Attachment(fn, full_type, file_path))
+            text = text.replace(f"<:{emoji_name}:{emoji_id}>", "")
+
+        if (sticker_items := data.get("sticker_items")) is not None:
+            for sticker in sticker_items:
+                fn = sticker["id"]
+                match sticker["format_type"]:
+                    case 1:
+                        fn += ".png"
+                        full_type = "image/png"
+                    case 2:
+                        fn += ".apng"
+                        full_type = "image/apng"
+                    case 3:
+                        continue
+                        # fn += ".lottie"
+                        # full_type = "application/json"
+                path = self.generate_cache_path(self.hub.name)
+                file_path = util.download_to_cache(url, path, filename)
+                attachments.append(Attachment(fn, full_type, file_path))
 
         m = Message(self.name, origin_id, username, text, attachments)
         if (ref_message := data["referenced_message"]) is not None:

@@ -52,7 +52,7 @@ class CQHttp(Messenger):
                     return None
                 message_id = ws_message["message_id"]
 
-                self.logger.info("Received message: " + message_id)
+                self.logger.info("Received message: " + str(message_id))
 
                 author = ws_message["sender"]["nickname"]
 
@@ -64,7 +64,7 @@ class CQHttp(Messenger):
                         is_reply = True
                         ref_id = d["data"]["id"]
 
-                        self.logger.info("Reply to: " + ref_id)
+                        self.logger.info("Reply to: " + str(ref_id))
                     elif d["type"] == "text":
                         text += d["data"]["text"]
                     elif d["type"] == "image":

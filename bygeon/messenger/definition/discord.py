@@ -7,6 +7,7 @@ class Endpoints:
     SEND_MESSAGE = "https://discordapp.com/api/channels/{}/messages"
     DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
     EDIT_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
+    GET_EMOJI = "https://cdn.discordapp.com/emojis/{}"
 
 
 class ReferencedMessage(TypedDict):
@@ -94,6 +95,13 @@ class Channel(TypedDict):
     pass
 
 
+class StickerItem(TypedDict):
+    id: str
+    name: str
+    # 1: png, 2: apng, 3: lottie
+    format_type: int
+
+
 class DiscordMessage(TypedDict):
     id: str
     channel_id: str
@@ -124,7 +132,7 @@ class DiscordMessage(TypedDict):
     thread: NotRequired[Channel]
 
     # components?	Array of message components	sent if the message contains components like buttons, action rows, or other interactive components
-    # sticker_items?	array of message sticker item objects	sent if the message contains stickers
+    sticker_items: Optional[List[StickerItem]]
 
 
 class MessageCreateEvent(DiscordMessage):
