@@ -263,7 +263,7 @@ class Discord(Messenger):
 
         self.log_response(r)
 
-        message_id: str = r.json()["id"]
+        message_id: str = r.json().get("id")
         self.hub.update_entry(m, self.name, message_id)
 
     def send_identity(self, ws: WSApp) -> None:

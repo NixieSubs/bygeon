@@ -180,8 +180,8 @@ class Slack(Messenger):
         response = orjson.loads(r.text)
         if not response["ok"]:
             self.logger.error(response)
-
-        self.hub.update_entry(m, self.name, response.get("ts"))
+        else:
+            self.hub.update_entry(m, self.name, response.get("ts"))
 
     # return last id as message id
     def upload_files(self, m: Message) -> None:

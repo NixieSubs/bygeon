@@ -125,7 +125,8 @@ class CQHttp(Messenger):
         self.logger.info(r.text)
 
         response = r.json()
-        self.hub.update_entry(m, self.name, response["data"]["message_id"])
+        message_id = response.get("data").get("message_id")
+        self.hub.update_entry(m, self.name, message_id)
 
     def start(self) -> None:
         self.ws = WSApp(
