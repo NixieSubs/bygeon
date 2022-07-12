@@ -1,6 +1,6 @@
 [project]
 name = "bygeon"
-version = "0.0.6"
+version = "0.0.7"
 authors = [{ name = "dummyx", email = "pygeon@gmx.com" }]
 description = "A simple tool for syncing messages between multiple IMs"
 readme = "README.md"
@@ -19,6 +19,7 @@ dependencies = [
     "websocket_client>=1.3.3",
     "PyPika>=0.48.9",
     "orjson>=3.7.7",
+    "typing-extensions>=4.3.0",
 ]
 
 [project.scripts]
