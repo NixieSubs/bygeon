@@ -23,5 +23,5 @@
         group_id = ""
 
 
-[Pygeon]
+[Bygeon]
     cache_path = "cache"
