@@ -38,6 +38,7 @@ class CQHttp(Messenger):
 
     def on_close(self, ws, close_status_code, close_msg) -> None:
         self._on_close(ws, close_status_code, close_msg)
+        self.reconnect()
 
     def on_message(self, ws: WSApp, message: str) -> None:
         ws_message: WSMessage = orjson.loads(message)
@@ -101,6 +102,9 @@ class CQHttp(Messenger):
         ...
 
     def reconnect(self) -> None:
+        self.ws.close()
+        self.start()
+        self.join()
         ...
 
     def send_message(self, m: Message, ref_id=None) -> None:
