@@ -1,6 +1,8 @@
 # bygeon
 
+
 ![GitHub](https://img.shields.io/github/license/dummyx/bygeon)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bygeon)
 ![PyPI](https://img.shields.io/pypi/v/bygeon)
 
 A simple tool for syncing messages between multiple IMs.
