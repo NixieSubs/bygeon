@@ -1,13 +1,13 @@
 [project]
 name = "bygeon"
-version = "0.0.7"
+version = "0.0.8"
 authors = [{ name = "dummyx", email = "pygeon@gmx.com" }]
 description = "A simple tool for syncing messages between multiple IMs"
 readme = "README.md"
 license = { text = "AGPL-3.0-only" }
 requires-python = ">=3.10"
 classifiers = [
-    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
     "License :: OSI Approved :: GNU Affero General Public License v3",
     "Operating System :: Unix",
 ]
