@@ -26,6 +26,8 @@ An [example](https://github.com/dummyx/bygeon/blob/main/bygeon.example.toml) is 
 
 ## Slack
 
+NOTE: Slack support is kind of broken now, use with caution.
+
 Because bygeon is using WebSocket to receive events, app-level token is required alongside the normal bot token.
 
 For more information, refer to [Slack's documentation](https://api.slack.com/apis/connections/socket).
