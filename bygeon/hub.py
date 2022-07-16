@@ -57,6 +57,10 @@ class Hub:
         sql = f'SELECT * FROM "messages" WHERE "{orig}" = \'{reply_to}\''
         cur = self.cur.execute(sql)
 
+        if cur.rowcount == 0:
+            self.new_message(m)
+            return None
+
         for row in cur:
             for i, client in enumerate(self.clients):
                 if client.name != orig:
