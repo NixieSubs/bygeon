@@ -156,7 +156,7 @@ class Discord(Messenger):
         for attachment in data["attachments"]:
             url = attachment["url"]
 
-            fn = attachment["filename"]
+            fn = attachment["id"]
             filename = f"{self.name}_{fn}"
 
             full_type = attachment["content_type"]
