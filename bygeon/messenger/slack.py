@@ -13,6 +13,10 @@ from bygeon.message import Message, Attachment
 from .messenger import Messenger
 from .definition.slack import WSMessageType, EventType, MessageEventSubtype
 from .definition.slack import Endpoints, WSMessage, Event, MessageEvent, File
+from .definition.slack import (
+    MessageChangedEvent,
+    MessageDeletedEvent,
+)  # MessageRepliedEvent
 
 
 class Slack(Messenger):
@@ -68,8 +72,10 @@ class Slack(Messenger):
         # XXX
         subtype = event.get("subtype", "no_subtype")
         message_id = event["ts"]
-        text = event["text"]
         user_id = event.get("user")
+
+        # XXX
+        text = event.get("text", "")
 
         if user_id is None:
             username = event.get("username", "")
@@ -87,11 +93,14 @@ class Slack(Messenger):
 
         match subtype:
             case MessageEventSubtype.MESSAGE_DELETED:
+                event = cast(MessageDeletedEvent, event)
+
                 deleted_ts = event["deleted_ts"]
                 self.logger.info("Deleted message: {}".format(deleted_ts))
                 self.hub.recall_message(self.name, deleted_ts)
 
             case MessageEventSubtype.BOT_MESSAGE:
+                # Do nothing, treat as normal message
                 ...
 
             case MessageEventSubtype.NO_SUBTYPE:
@@ -101,12 +110,14 @@ class Slack(Messenger):
                     self.hub.reply_message(m, ref_id)
                 else:
                     self.hub.new_message(m)
+
             case MessageEventSubtype.FILE_SHARE:
                 attachments = self.get_attachments(event)
                 m = Message(self.name, message_id, username, text, attachments)
                 self.hub.new_message(m)
             case MessageEventSubtype.MESSAGE_CHANGED:
-                self.logger.info(event)
+                event = cast(MessageChangedEvent, event)
+                text = event["message"]["text"]
                 m = Message(self.name, message_id, username, text, [])
                 self.hub.modify_message(m)
 

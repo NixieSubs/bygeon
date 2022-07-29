@@ -44,19 +44,45 @@ class File(TypedDict):
 
 class Event(TypedDict):
     type: str
-    subtype: NotRequired[str]
+    event_ts: str
+    user: str
+
+    # Use this to create a reply thread
+    ts: str
 
 
 class MessageEvent(Event):
     channel: str
-    user: str
     text: NotRequired[str]
-    deleted_ts: NotRequired[str]
     thread_ts: NotRequired[str]
 
-    # Use this to create a reply thread
+
+class FileShareEvent(MessageEvent):
+    subtype: str
+    files: List[File]
+
+
+class BotMessageEvent(MessageEvent):
+    bot_id: str
+    username: NotRequired[str]
+    icons: NotRequired[dict]
+
+
+class MessageDeletedEvent(MessageEvent):
+    subtype: str
+    deleted_ts: str
+
+
+class MessageChangedMessage(TypedDict):
+    type: str
+    user: str
+    text: str
     ts: str
-    files: NotRequired[List[File]]
+    edited: dict
+
+
+class MessageChangedEvent(MessageEvent):
+    message: MessageChangedMessage
 
 
 class Element(TypedDict):
@@ -85,15 +111,13 @@ class UserProfileChangedEvent(TypedDict):
 class Payload(TypedDict):
     token: str
     team_id: str
+    api_app_id: str
     event: Event
-    client_msg_id: str
     type: str
-    text: str
-    user: str
-    # use ts to create new reply thread
-    ts: str
-    team: str
-    blocks: Block
+    authorizations: List[str]
+    event_context: str
+    event_id: str
+    event_time: int
 
 
 class WSMessage(TypedDict):
