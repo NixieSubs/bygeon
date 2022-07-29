@@ -8,6 +8,8 @@ class Endpoints:
     DELETE_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
     EDIT_MESSAGE = "https://discordapp.com/api/channels/{}/messages/{}"
     GET_EMOJI = "https://cdn.discordapp.com/emojis/{}"
+    GET_CHANNEL = "https://discordapp.com/api/channels/{}"
+    LIST_GUILD_MEMBERS = "https://discordapp.com/api/guilds/{}/members"
 
 
 class ReferencedMessage(TypedDict):
@@ -62,6 +64,22 @@ class User(TypedDict):
 
 
 class Role(TypedDict):
+    pass
+
+
+class GuildMember(TypedDict):
+    user: User
+    nick: NotRequired[Optional[str]]
+    avatar: Optional[str]
+    roles: List[str]
+    joined_at: str
+    premium_since: str
+    deaf: bool
+    mute: bool
+    pending: NotRequired[bool]
+    permissions: NotRequired[str]
+    communication_disabled_until: str
+
     pass
 
 

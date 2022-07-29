@@ -20,6 +20,7 @@ from .definition.discord import (
     EventName,
     WebsocketMessage,
     Endpoints,
+    GuildMember,
 )
 from .definition.discord import (
     MessageCreateEvent,
@@ -40,6 +41,7 @@ class Discord(Messenger):
         self.sequence = None
         self.session_id = None
 
+        self.nickname_dict = self.get_nicknames()
         self.logger = self.get_logger()
 
     @property
@@ -151,7 +153,7 @@ class Discord(Messenger):
         self.logger.info("Received message: %s", text)
 
         author = data["author"]
-        username = author["username"]
+        username = self.nickname_dict.get(author["id"], author["username"])
         attachments: List[Attachment] = []
         for attachment in data["attachments"]:
             url = attachment["url"]
@@ -307,6 +309,27 @@ class Discord(Messenger):
         self.ws.close()
         self.start()
         self.join()
+
+    def get_nicknames(self) -> Dict[str, str]:
+        r = requests.get(
+            Endpoints.GET_CHANNEL.format(self.channel_id), headers=self.headers
+        )
+
+        guild_id = r.json()["guild_id"]
+
+        r = requests.get(
+            Endpoints.LIST_GUILD_MEMBERS.format(guild_id), headers=self.headers
+        )
+        print(r.text)
+        nickname_dict: Dict[str, str] = {}
+        guild_members: List[GuildMember] = orjson.loads(r.text)
+
+        for member in guild_members:
+            if member.get("nick") is None:
+                continue
+            nickname_dict[member["user"]["id"]] = cast(str, member["nick"])
+        print(nickname_dict)
+        return nickname_dict
 
     def start(self) -> None:
         self.ws = WSApp(
