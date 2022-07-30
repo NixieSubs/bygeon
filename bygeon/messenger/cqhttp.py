@@ -1,5 +1,5 @@
 import threading
-from typing import Union, cast
+from typing import Dict, Union, cast
 from urllib.parse import urljoin
 
 from websocket import WebSocketApp as WSApp
@@ -23,12 +23,26 @@ class CQHttp(Messenger):
     def recall_url(self) -> str:
         return urljoin(self.http_url, Endpoints.DELETE_MESSAGE)
 
+    @property
+    def member_list_url(self) -> str:
+        return urljoin(self.http_url, Endpoints.GET_GROUP_MEMBER_LIST)
+
     def __init__(self, group_id: str, hub: Hub, ws_url: str, http_url: str) -> None:
         self.group_id = int(group_id)
         self.hub = hub
         self.logger = self.get_logger()
         self.ws_url = ws_url
         self.http_url = http_url
+        self.nickname_dict = self.get_nicknames()
+
+    def get_nicknames(self):
+        payload = {"group_id": self.group_id}
+        r = requests.get(self.member_list_url, json=payload)
+        member_list = orjson.loads(r.text)
+        nickname_dict: Dict[int, str] = {}
+        for member in member_list:
+            nickname_dict[member["user_id"]] = member["card"]
+        pass
 
     def on_open(self, ws) -> None:
         self._on_open(ws)
@@ -55,7 +69,8 @@ class CQHttp(Messenger):
 
                 self.logger.info("Received message: " + str(message_id))
 
-                author = ws_message["sender"]["nickname"]
+                author_id = ws_message["sender"]["user_id"]
+                author = self.nickname_dict[author_id]
 
                 data = ws_message["message"]
                 text = ""

@@ -5,6 +5,7 @@ from typing_extensions import NotRequired
 class Endpoints:
     SEND_GROUP_MESSAGE = "send_group_msg"
     DELETE_MESSAGE = "delete_msg"
+    GET_GROUP_MEMBER_LIST = "get_group_member_list"
 
 
 class PostType:
