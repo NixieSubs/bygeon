@@ -70,7 +70,7 @@ class CQHttp(Messenger):
                 self.logger.info("Received message: " + str(message_id))
 
                 author_id = ws_message["sender"]["user_id"]
-                author = self.nickname_dict[author_id]
+                author = self.nickname_dict[author_id] or ws_message["sender"]["nickname"]
 
                 data = ws_message["message"]
                 text = ""
