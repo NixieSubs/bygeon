@@ -42,7 +42,7 @@ class CQHttp(Messenger):
         nickname_dict: Dict[int, str] = {}
         for member in member_list:
             nickname_dict[member["user_id"]] = member["card"]
-        pass
+        return nickname_dict
 
     def on_open(self, ws) -> None:
         self._on_open(ws)
