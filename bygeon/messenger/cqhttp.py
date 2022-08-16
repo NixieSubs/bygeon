@@ -36,9 +36,9 @@ class CQHttp(Messenger):
         self.nickname_dict = self.get_nicknames()
 
     def get_nicknames(self):
-        payload = {"group_id": self.group_id}
-        r = requests.get(self.member_list_url, json=payload)
-        member_list = orjson.loads(r.text)
+        payload = {"group_id": int(self.group_id)}
+        r = requests.post(self.member_list_url, json=payload)
+        member_list = orjson.loads(r.text)["data"]
         nickname_dict: Dict[int, str] = {}
         for member in member_list:
             nickname_dict[member["user_id"]] = member["card"]
