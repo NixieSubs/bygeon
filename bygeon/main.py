@@ -2,7 +2,7 @@ import tomli
 from .messenger.slack import Slack
 from .messenger.discord import Discord
 from .messenger.cqhttp import CQHttp
-from .hub import Hub
+from .messenger import Hub
 from typing import List
 
 
@@ -10,9 +10,29 @@ def main():
     with open("bygeon.toml", "rb") as f:
         config = tomli.load(f)
 
-    hub_configs = config["Hubs"]
+    client_configs = config["Clients"]
     hubs: List[Hub] = []
 
+    if discord_config := client_configs.get("Discord") != None:
+        discord = Discord(
+            bot_token = discord_config["bot_token"],
+        )
+
+    if slack_config := client_configs.get("Slack") != None:
+        slack = Discord(
+            app_token = slack_config["app_token"],
+            bot_token = slack_config["bot_token"],
+
+        )
+
+    if cqhttp_config := client_configs.get("CQHttp") != None:
+        slack = Discord(
+            bot_token = discord_config["bot_token"],
+            channel_id = discord_config["channel_id"],
+        )
+
+
+    hub_configs = config["hubs"]
     for (i, hub_config) in enumerate(hub_configs):
         hub_name = hub_config.get("name", f"HUB-{i}")
         keep_data = hub_config["keep_data"]
@@ -20,13 +40,7 @@ def main():
         hub = Hub(hub_name)
         hubs.append(hub)
 
-        if hub_config.get("Discord") != None:
-            discord = Discord(
-                bot_token=hub_config["Discord"]["bot_token"],
-                channel_id=hub_config["Discord"]["channel_id"],
-                hub=hub,
-            )
-            hub.add_client(discord)
+        
         if hub_config.get("Slack") != None:
             slack = Slack(
                 app_token=hub_config["Slack"]["app_token"],

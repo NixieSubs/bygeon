@@ -1,4 +1,20 @@
 # you can configure multiple hubs
+[Clients]
+    [Discord]
+        bot_token = ""
+
+    [Slack]
+# your bot token, the one that starts with "xoxb-"
+        bot_token = ""
+# your app token, the one that starts with "xoxa-"
+        app_token = ""
+
+    [CQHttp]
+        ws_url = ""
+        http_url = ""
+
+
+
 [[Hubs]]
     # the name of the hub
     name = "HUB-1"
@@ -7,19 +23,12 @@
 
     # disable messengers by commenting out the corresponding block
     [Hubs.Discord]
-        bot_token = ""
         channel_id = ""
 
-    [Hubs.Slack]
-        # your bot token, the one that starts with "xoxb-"
-        bot_token = ""
-        # your app token, the one that starts with "xoxa-"
-        app_token = ""
+    [Hubs.Slack]    
         channel_id = ""
 
     [Hubs.CQHttp]
-        ws_url = ""
-        http_url = ""
         group_id = ""
 
 
