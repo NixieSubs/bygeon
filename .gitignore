@@ -129,7 +129,10 @@ dmypy.json
 .pyre/
 
 # config file
-pygeon.toml
+bygeon.toml
+
+# database files
+*.db
 
 # cache
 cache/
