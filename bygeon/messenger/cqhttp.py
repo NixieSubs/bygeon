@@ -8,7 +8,6 @@ import orjson
 import requests
 
 import bygeon.util as util
-from bygeon.hub import Hub
 from bygeon.message import Message, Attachment
 from .definition.cqhttp import WSMessage, PostType, Endpoints
 from .messenger import Messenger
@@ -27,9 +26,8 @@ class CQHttp(Messenger):
     def member_list_url(self) -> str:
         return urljoin(self.http_url, Endpoints.GET_GROUP_MEMBER_LIST)
 
-    def __init__(self, group_id: str, hub: Hub, ws_url: str, http_url: str) -> None:
+    def __init__(self, group_id: str, ws_url: str, http_url: str) -> None:
         self.group_id = int(group_id)
-        self.hub = hub
         self.logger = self.get_logger()
         self.ws_url = ws_url
         self.http_url = http_url

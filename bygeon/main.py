@@ -2,7 +2,7 @@ import tomli
 from .messenger.slack import Slack
 from .messenger.discord import Discord
 from .messenger.cqhttp import CQHttp
-from .messenger import Hub
+from .messenger.messenger import Messenger
 from typing import List
 
 

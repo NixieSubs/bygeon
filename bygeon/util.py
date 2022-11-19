@@ -3,6 +3,7 @@ from typing import Callable
 import requests
 import os
 from pathlib import Path
+from sqlite3 import Connection as SQLConn, Cursor as SQLCur
 
 
 def run_in_thread(func: Callable, args: tuple):
@@ -31,3 +32,8 @@ def rename_with_proper_suffix(filename: str, content_type: str) -> str:
     if not filename.endswith(suffix):
         filename += suffix
     return filename
+
+def update_db(conn: SQLConn, sql: str):
+    cur = conn.cursor()  
+    cur.execute(sql)
+    conn.commit()

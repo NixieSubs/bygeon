@@ -8,7 +8,6 @@ import requests
 import orjson
 
 import bygeon.util as util
-from bygeon.hub import Hub
 from bygeon.message import Message, Attachment
 from .messenger import Messenger
 from .definition.slack import WSMessageType, EventType, MessageEventSubtype

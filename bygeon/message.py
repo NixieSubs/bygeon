@@ -13,7 +13,8 @@ class Attachment(NamedTuple):
 
 class Message(NamedTuple):
     origin: str
-    origin_id: str
+    origin_c_id: str
+    origin_m_id: str
     author_username: str
     text: str
     attachments: List[Attachment]
