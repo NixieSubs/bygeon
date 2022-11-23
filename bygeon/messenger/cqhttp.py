@@ -55,9 +55,10 @@ class CQHttp(Messenger):
 
     def on_message(self, ws: WSApp, message: str) -> None:
         ws_message: WSMessage = orjson.loads(message)
+        self.log.debug(message)
+
         post_type = ws_message["post_type"]
-        is_reply = False
-        message_group_id = ws_message.get("group_id")
+
         match post_type:
             case PostType.MESSAGE:
                 self.handle_message(ws_message)
@@ -77,6 +78,9 @@ class CQHttp(Messenger):
         hub.recall_hub_message(self.name, recalled_id)
 
     def handle_message(self, wsm: WSMessage):
+        ref_id = None
+        message_id = wsm["message_id"]
+        self.log.info(f"Handling message {message_id}")
         if (group_id := wsm.get("group_id")) is None:
             return None
         c_id = str(group_id)
@@ -110,9 +114,9 @@ class CQHttp(Messenger):
                 path = self.generate_cache_path(self.name)
                 file_path = util.download_to_cache(url, path, filename)
                 attachments.append(Attachment(fn, "image", file_path))
-        m = Message(self.name, c_id, m_id, None, author, text, attachments)
-        
-        hub.new_hub_message(m, ref_id)
+        m = Message(self.name, c_id, m_id, ref_id, author, text, attachments)
+        hub.new_entry(m)
+        hub.new_hub_message(m)
 
     def recall_message(self, m_id: str, c_id: None | str) -> None:
         payload = {
@@ -120,7 +124,6 @@ class CQHttp(Messenger):
         }
         r = requests.post(self.recall_url, json=payload)
         self.log.info("Trying to recall: " + m_id)
-        self.log.info(r.json())
 
     def modify_message(self, m: Message, c_id: str, m_id: str) -> None:
         self.recall_message(m_id, c_id)
@@ -148,16 +151,15 @@ class CQHttp(Messenger):
             main_type = attachment.type.split("/")[0]
             message_string += f"[CQ:{main_type},file=file:{attachment.file_path}]"
 
-        self.log.info(ref_id)
         if ref_id is not None:
             message_string += f"[CQ:reply,id={ref_id}]"
         message_string += f"[{m.author_username}]: {m.text}"
         self.log.info(f"Sending message with CQCode: {message_string}")
         payload["message"] = message_string
-        self.log.info(payload)
+        
 
         r = requests.post(self.send_url, json=payload)
-        self.log.info(r.text)
+        
 
         response = r.json()
         message_id = response.get("data").get("message_id")

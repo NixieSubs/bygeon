@@ -58,10 +58,11 @@ def main() -> None:
             hub.add_linkee(discord, c_id)
         if hub_cqhttp := hub_config.get("CQHttp"):
             c_id = hub_cqhttp["group_id"]
-            discord.add_hub(c_id, hub)
+            cqhttp.add_hub(c_id, hub)
             hub.add_linkee(cqhttp, c_id)
         hub.init_database(keep_data)
 
     for client in clients:
         client.start()
+    for client in clients:
         client.join()

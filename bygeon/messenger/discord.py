@@ -232,12 +232,12 @@ class Discord(Messenger):
                 file_path = util.download_to_cache(url, path, filename)
                 attachments.append(Attachment(fn, full_type, file_path))
 
-        m = Message(self.name, c_id, m_id, None, username, text, attachments)
+        ref_id = None
         if (ref_message := data["referenced_message"]) is not None:
             ref_id = ref_message["id"]
-            hub.new_hub_message(m, ref_id)
-        else:
-            hub.new_hub_message(m)
+        
+        m = Message(self.name, c_id, m_id, ref_id, username, text, attachments)
+        hub.new_hub_message(m)
 
     def recall_message(self, m_id: str, c_id: None | str) -> None:
         r = requests.delete(

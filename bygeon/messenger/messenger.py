@@ -4,10 +4,10 @@ from websocket import WebSocketApp as WSApp
 
 from bygeon.message import Message
 
-from typing import Protocol, List, Dict, Tuple, NamedTuple
+from typing import Protocol, List, Dict, Tuple, NamedTuple, cast
 
 from pypika import Query, Column, Table
-from sqlite3 import Connection as SQLConn, Cursor as SQLCur, connect
+from sqlite3 import Connection as SQLConn, Cursor as SQLCur, Row as SQLRow,connect
 
 from bygeon.message import Message
 from structlog import BoundLogger
@@ -18,6 +18,7 @@ import bygeon.logger as logger
 
 class Hub:
     links: Dict["Messenger", str]
+    log: BoundLogger
 
     def __init__(self, name: str, keep_data=False):
         self.conn: SQLConn = connect(
@@ -25,11 +26,12 @@ class Hub:
             check_same_thread=False,
             isolation_level=None,
         )
-
+        self.conn.row_factory = SQLRow
         self.name = name
         self.links = {}
 
         self.init_database(keep_data)
+        self.log = logger.log.bind(Hub=self.name)
 
     def add_linkee(self, msgr: "Messenger", c_id: str):
         self.links[msgr] = c_id
@@ -57,28 +59,52 @@ class Hub:
             self.execute_sql(str(create_table))
         self.table = Table("messages")
 
-    def new_hub_message(self, m: Message, ref_id: None | str = None):
+    def new_hub_message(self, m: Message):
+        ref = m.origin_ref_id
+        ref_id = None
+        self.new_entry(m)
         for client in self.clients:
             to_c_id = self.links[client]
             if m.origin != client.name:
-                client.send_message(m, to_c_id)
+                if ref is not None:
+                    self.log.debug(f"Find ref_id in original message: {ref}")
+                    self.log.debug(f"Trying to find corresponding ref_id for {client.name}")
+                    ref_id = self.find_id(m.origin, ref, client.name)
+                    if ref_id is not None:
+                        self.log.debug(f"Found corresponding ref_id {ref_id}")
+
+                client.send_message(m, to_c_id, ref_id)
 
     def modify_hub_message(self, m: Message) -> None:
-        sent_id = m.origin_m_id
-        sql = f'SELECT * FROM "messages" WHERE "{m.origin}" = \'{sent_id}\''
-        cur = self.execute_sql(sql)
-        for row in cur:
-            for i, client in enumerate(self.clients):
-                if client.name != m.origin:
-                    util.run_in_thread(client.modify_message, (m, row[i]))
+        for client in self.clients:
+            if client.name != m.origin:
+                to_c_id = self.links[client]
+                m_id = self.find_id(m.origin, m.origin_m_id, client.name)
+                util.run_in_thread(client.modify_message, (m, to_c_id, m_id))
 
     def recall_hub_message(self, orig: str, recalled_id: str) -> None:
-        sql = f'SELECT * FROM "messages" WHERE "{orig}" = \'{recalled_id}\''
+        for client in self.clients:
+            if client.name != orig:
+                to_c_id = self.links[client]
+                m_id = self.find_id(orig, recalled_id, client.name)
+                util.run_in_thread(client.recall_message, (m_id, to_c_id))
+
+    def find_row(self, fname, m_id) -> SQLRow :
+
+        select_string = ", ".join([f"\"{n}\" AS {n}" for n in self.client_names])
+
+        sql = f'SELECT {select_string} FROM "messages" WHERE "{fname}" = \'{m_id}\''
         cur = self.execute_sql(sql)
-        for row in cur:
-            for i, client in enumerate(self.clients):
-                if client.name != orig:
-                    util.run_in_thread(client.recall_message, (row[i],))
+        res = cur.fetchone()
+
+        return res
+
+    def find_id(self, fname: str, m_id: str, tname: str) -> str | None:
+        res = self.find_row(fname, m_id)
+        return res[tname] if res is not None else None
+
+
+    
 
     def new_entry(self, m: Message) -> None:
         origin_id = m.origin_m_id
@@ -102,9 +128,6 @@ class Messenger(Protocol):
     def get_logger(self):
         self.log = logger.log.bind(Client=self.name)
         return self.log
-
-    def __init__(self, connect: SQLConn):
-        pass
 
     def __hash__(self):
         return hash(self.name)
