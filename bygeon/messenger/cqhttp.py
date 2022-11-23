@@ -10,7 +10,7 @@ import requests
 import bygeon.util as util
 from bygeon.message import Message, Attachment
 from .definition.cqhttp import WSMessage, PostType, Endpoints
-from .messenger import Messenger
+from .messenger import Messenger, Hub
 
 
 class CQHttp(Messenger):
@@ -30,12 +30,12 @@ class CQHttp(Messenger):
         self.log = self.get_logger()
         self.ws_url = ws_url
         self.http_url = http_url
-        self.nickname_dict = self.get_nicknames()
+        self.nickname_dict: Dict[str, Dict[int, str]] = {}
 
         self.hubs = {}
 
-    def get_nicknames(self):
-        payload = {"group_id": int(self.group_id)}
+    def get_nicknames(self, c_id) -> dict:
+        payload = {"group_id": int(c_id)}
         r = requests.post(self.member_list_url, json=payload)
         member_list = orjson.loads(r.text)["data"]
         nickname_dict: Dict[int, str] = {}
@@ -89,7 +89,7 @@ class CQHttp(Messenger):
         self.log.info("Received message: " + str(m_id))
 
         author_id = wsm["sender"]["user_id"]
-        author = self.nickname_dict[author_id] or wsm["sender"]["nickname"]
+        author = self.nickname_dict[c_id][author_id] or wsm["sender"]["nickname"]
 
         data = wsm["message"]
         text = ""
@@ -162,6 +162,10 @@ class CQHttp(Messenger):
         response = r.json()
         message_id = response.get("data").get("message_id")
         hub.update_entry(m, self.name, message_id)
+    def add_hub(self, c_id: str , hub: Hub):
+        self.hubs[c_id] = hub
+
+        self.nickname_dict[c_id] = self.get_nicknames(c_id)
 
     def start(self) -> None:
         self.ws = WSApp(

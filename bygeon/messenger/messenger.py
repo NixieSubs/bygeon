@@ -60,7 +60,8 @@ class Hub:
     def new_hub_message(self, m: Message, ref_id: None | str = None):
         for client in self.clients:
             to_c_id = self.links[client]
-            client.send_message(m, to_c_id)
+            if m.origin != client.name:
+                client.send_message(m, to_c_id)
 
     def modify_hub_message(self, m: Message) -> None:
         sent_id = m.origin_m_id

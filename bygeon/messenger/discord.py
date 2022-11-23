@@ -38,6 +38,7 @@ class Discord(Messenger):
         self.sequence = None
         self.session_id = None
         self.guild_id = guild_id
+        self.hubs = {}
 
         self.nickname_dict = self.get_nicknames()
         self.log = self.get_logger()
@@ -72,7 +73,7 @@ class Discord(Messenger):
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
-        self.log.debug(ws_message)
+
 
         match opcode:
             case Opcode.HELLO:
@@ -119,7 +120,7 @@ class Discord(Messenger):
         c_id = d["channel_id"]
         if (hub := self.hubs.get(c_id)) is None:
             return None
-            
+
         text = d["content"]
         username = d["author"]["username"]
         m_id = d["id"]
@@ -293,7 +294,6 @@ class Discord(Messenger):
 
     def send_identity(self, ws: WSApp) -> None:
         payload = self.identity_payload
-        print(payload)
         ws.send(payload)
 
     @property
@@ -337,7 +337,6 @@ class Discord(Messenger):
         r = requests.get(
             Endpoints.LIST_GUILD_MEMBERS.format(self.guild_id), headers=self.headers
         )
-        print(r.text)
         nickname_dict: Dict[str, str] = {}
         guild_members: List[GuildMember] = orjson.loads(r.text)
 
@@ -345,7 +344,6 @@ class Discord(Messenger):
             if member.get("nick") is None:
                 continue
             nickname_dict[member["user"]["id"]] = cast(str, member["nick"])
-        print(nickname_dict)
         return nickname_dict
 
     def start(self) -> None:

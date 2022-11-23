@@ -13,7 +13,6 @@ classifiers = [
 ]
 
 dependencies = [
-    "colorlog>=6.6.0",
     "requests>=2.28.1",
     "tomli>=2.0.1",
     "websocket_client>=1.4.2",

@@ -1,15 +1,16 @@
 # you can configure multiple hubs
 [Clients]
-    [Discord]
+    [Clients.Discord]
         bot_token = ""
+        guild_id = ""
 
-    [Slack]
+    [Clients.Slack]
 # your bot token, the one that starts with "xoxb-"
         bot_token = ""
 # your app token, the one that starts with "xoxa-"
         app_token = ""
 
-    [CQHttp]
+    [Clients.CQHttp]
         ws_url = ""
         http_url = ""
 
