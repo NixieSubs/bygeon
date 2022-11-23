@@ -12,7 +12,7 @@ import orjson
 
 import bygeon.util as util
 from bygeon.message import Message, Attachment
-from .messenger import Messenger
+from .messenger import Messenger, Hub
 from .definition.discord import (
     MessageUpdateEvent,
     Opcode,
@@ -33,15 +33,14 @@ class Discord(Messenger):
     session_id: Optional[str]
     sequence: Optional[int]
 
-    def __init__(self, bot_token: str, channel_id: str, hub: Hub) -> None:
+    def __init__(self, bot_token: str, guild_id: str) -> None:
         self.token = bot_token
-        self.channel_id = channel_id
-        self.hub = hub
         self.sequence = None
         self.session_id = None
+        self.guild_id = guild_id
 
         self.nickname_dict = self.get_nicknames()
-        self.logger = self.get_logger()
+        self.log = self.get_logger()
 
     @property
     def headers(self):
@@ -73,6 +72,7 @@ class Discord(Messenger):
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
+        self.log.debug(ws_message)
 
         match opcode:
             case Opcode.HELLO:
@@ -86,7 +86,7 @@ class Discord(Messenger):
                 # TODO
                 pass
             case Opcode.DISPATCH:
-                self.logger.debug(ws_message)
+
                 self.handle_dispatch(ws_message)
             case _:
                 return None
@@ -99,40 +99,59 @@ class Discord(Messenger):
             case EventName.MESSAGE_CREATE:
                 create_event = cast(MessageCreateEvent, ws_message["d"])
                 self.handle_message_create(create_event)
+
             case EventName.MESSAGE_DELETE:
                 delete_event = cast(MessageDeleteEvent, ws_message["d"])
-                message_id = delete_event["id"]
-                self.hub.recall_message(self.name, message_id)
+                self.handle_message_delete(delete_event)
+
             case EventName.READY:
                 ready_event = cast(ReadyEvent, ws_message["d"])
                 self.handle_ready(ready_event)
+
             case EventName.MESSAGE_UPDATE:
                 update_event = cast(MessageUpdateEvent, ws_message["d"])
-                text = update_event["content"]
-                username = update_event["author"]["username"]
-                message_id = update_event["id"]
-                m = Message(self.name, message_id, username, text, [])
-                self.hub.modify_message(m)
+                self.handle_message_update(update_event)
+
             case _:
                 return None
+
+    def handle_message_update(self, d: MessageUpdateEvent):
+        c_id = d["channel_id"]
+        if (hub := self.hubs.get(c_id)) is None:
+            return None
+            
+        text = d["content"]
+        username = d["author"]["username"]
+        m_id = d["id"]
+        m = Message(self.name, c_id, m_id, None, username, text, [])
+        hub.modify_hub_message(m)
+
+    def handle_message_delete(self, d: MessageDeleteEvent):
+        c_id = d["channel_id"]
+        if (hub := self.hubs.get(c_id)) is None:
+            return None
+
+        hub.recall_hub_message(self.name, d["id"])
 
     def handle_ready(self, data: ReadyEvent) -> None:
         self.bot_id = data["user"]["id"]
         self.session_id = data["session_id"]
 
-    def handle_reply(self, m: Message, ref_id: str) -> None:
-        self.hub.reply_message(m, ref_id)
+    def handle_modify(self, d: MessageUpdateEvent) -> None:
+        c_id = d["channel_id"]
+        if (hub := self.hubs.get(c_id)) is None:
+            return None
 
-    def handle_modify(self, data: MessageUpdateEvent) -> None:
-        message_id = data["id"]
-        author = data["author"]
+        m_id = d["id"]
+
+        author = d["author"]
         username = author["username"]
-        text = data["content"]
-        m = Message(self.name, message_id, username, text, [])
-        self.hub.modify_message(m)
+        text = d["content"]
+        m = Message(self.name, c_id, m_id, None, username, text, [])
+        hub.modify_hub_message(m)
 
-    def modify_message(self, m: Message, m_id: str) -> None:
-        url = Endpoints.EDIT_MESSAGE.format(self.channel_id, m_id)
+    def modify_message(self, m: Message, c_id: str, m_id: str) -> None:
+        url = Endpoints.EDIT_MESSAGE.format(c_id, m_id)
 
         payload = {
             "content": f"[{m.author_username}]: {m.text}",
@@ -141,15 +160,18 @@ class Discord(Messenger):
         requests.patch(url, headers=self.headers, json=payload)
 
     def handle_message_create(self, data: MessageCreateEvent) -> None:
-        if data.get("channel_id") != self.channel_id:
+        c_id = data["channel_id"]
+        hub = self.hubs.get(c_id)
+
+        if hub is None:
             return None
         elif data["author"].get("id") == self.bot_id:
             return None
 
-        origin_id = data["id"]
+        m_id = data["id"]
 
         text = data["content"]
-        self.logger.info("Received message: %s", text)
+        self.log.info("Received message: %s", text)
 
         author = data["author"]
         username = self.nickname_dict.get(author["id"], author["username"])
@@ -162,7 +184,7 @@ class Discord(Messenger):
 
             full_type = attachment["content_type"]
 
-            path = self.generate_cache_path(self.hub.name)
+            path = self.generate_cache_path(self.name)
             file_path = util.download_to_cache(url, path, filename)
             attachments.append(Attachment(fn, full_type, file_path))
 
@@ -176,7 +198,7 @@ class Discord(Messenger):
         for a_emoji_name, a_emoji_id in a_emoji_list:
             fn = f"{a_emoji_name}_{a_emoji_id}.gif"
             url = Endpoints.GET_EMOJI.format(a_emoji_id) + ".gif"
-            path = self.generate_cache_path(self.hub.name)
+            path = self.generate_cache_path(self.name)
             file_path = util.download_to_cache(url, path, fn)
             full_type = "image/gif"
             attachments.append(Attachment(fn, full_type, file_path))
@@ -185,7 +207,7 @@ class Discord(Messenger):
         for emoji_name, emoji_id in emoji_list:
             fn = f"{emoji_name}_{emoji_id}.png"
             url = Endpoints.GET_EMOJI.format(emoji_id) + ".png"
-            path = self.generate_cache_path(self.hub.name)
+            path = self.generate_cache_path(self.name)
             file_path = util.download_to_cache(url, path, fn)
             full_type = "image/png"
             attachments.append(Attachment(fn, full_type, file_path))
@@ -205,31 +227,33 @@ class Discord(Messenger):
                         continue
                         # fn += ".lottie"
                         # full_type = "application/json"
-                path = self.generate_cache_path(self.hub.name)
+                path = self.generate_cache_path(self.name)
                 file_path = util.download_to_cache(url, path, filename)
                 attachments.append(Attachment(fn, full_type, file_path))
 
-        m = Message(self.name, origin_id, username, text, attachments)
+        m = Message(self.name, c_id, m_id, None, username, text, attachments)
         if (ref_message := data["referenced_message"]) is not None:
             ref_id = ref_message["id"]
-            self.hub.reply_message(m, ref_id)
+            hub.new_hub_message(m, ref_id)
         else:
-            self.hub.new_message(m)
+            hub.new_hub_message(m)
 
-    def recall_message(self, message_id: str) -> None:
+    def recall_message(self, m_id: str, c_id: None | str) -> None:
         r = requests.delete(
-            Endpoints.DELETE_MESSAGE.format(self.channel_id, message_id),
+            Endpoints.DELETE_MESSAGE.format(c_id, m_id),
             headers=self.headers,
         )
         self.log_response(r)
 
-    def send_message(self, m: Message, ref_id=None) -> None:
+    def send_message(self, m: Message, c_id: str, ref_id=None) -> None:
+        hub = self.hubs[c_id]
+
         payload: dict[str, Union[str, dict]] = {
             "content": f"[{m.author_username}]: {m.text}"
         }
         if ref_id is not None:
             payload["message_reference"] = {
-                "channel_id": self.channel_id,
+                "channel_id": c_id,
                 "message_id": ref_id,
             }
 
@@ -251,13 +275,13 @@ class Discord(Messenger):
                 )  # type: ignore[arg-type]
             )
             r = requests.post(
-                Endpoints.SEND_MESSAGE.format(self.channel_id),
+                Endpoints.SEND_MESSAGE.format(c_id),
                 headers=self.headers,
                 files=files,
             )
         else:
             r = requests.post(
-                Endpoints.SEND_MESSAGE.format(self.channel_id),
+                Endpoints.SEND_MESSAGE.format(c_id),
                 json=payload,
                 headers=self.headers,
             )
@@ -265,7 +289,7 @@ class Discord(Messenger):
         self.log_response(r)
 
         message_id: str = r.json().get("id")
-        self.hub.update_entry(m, self.name, message_id)
+        hub.update_entry(m, self.name, message_id)
 
     def send_identity(self, ws: WSApp) -> None:
         payload = self.identity_payload
@@ -299,9 +323,9 @@ class Discord(Messenger):
 
     def log_response(self, r: requests.Response) -> None:
         if r.status_code != 200:
-            self.logger.error(r.text)
+            self.log.error(r.text)
         else:
-            self.logger.debug(r.text)
+            self.log.debug(r.text)
 
     def reconnect(self) -> None:
         # XXX
@@ -311,13 +335,7 @@ class Discord(Messenger):
 
     def get_nicknames(self) -> Dict[str, str]:
         r = requests.get(
-            Endpoints.GET_CHANNEL.format(self.channel_id), headers=self.headers
-        )
-
-        guild_id = r.json()["guild_id"]
-
-        r = requests.get(
-            Endpoints.LIST_GUILD_MEMBERS.format(guild_id), headers=self.headers
+            Endpoints.LIST_GUILD_MEMBERS.format(self.guild_id), headers=self.headers
         )
         print(r.text)
         nickname_dict: Dict[str, str] = {}
