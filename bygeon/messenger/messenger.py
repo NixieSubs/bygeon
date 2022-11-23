@@ -122,7 +122,7 @@ class Hub:
 
 
 class Messenger(Protocol):
-    log: BoundLogger
+    log: BindableLogger
     hubs: Dict[str, Hub]
 
     def get_logger(self):
