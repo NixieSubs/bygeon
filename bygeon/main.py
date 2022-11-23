@@ -16,8 +16,7 @@ def main() -> None:
 
     if discord_config := client_configs.get("Discord"):
         discord = Discord(
-            discord_config["bot_token"],
-            discord_config["guild_id"]
+            discord_config["bot_token"]
         )
         clients.append(discord)
 
