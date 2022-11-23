@@ -33,17 +33,17 @@ class Discord(Messenger):
     session_id: Optional[str]
     sequence: Optional[int]
 
-    def __init__(self, bot_token: str, guild_id: str) -> None:
+    def __init__(self, bot_token: str) -> None:
         self.token = bot_token
         self.sequence = None
         self.session_id = None
-        self.guild_id = guild_id
-        self.hubs = {}
 
-        self.nickname_dict: Dict[str, Dict[str, str]] = {} 
+        self.hubs = {}
+        self.nickname_dict: Dict[str, Dict[str, str]] = {}
+
         self.log = self.get_logger()
 
-    def add_hub(self, c_id: str , hub: Hub):
+    def add_hub(self, c_id: str, hub: Hub):
         self.hubs[c_id] = hub
 
         self.nickname_dict[c_id] = self.get_nicknames(c_id)
@@ -80,7 +80,6 @@ class Discord(Messenger):
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]
-
 
         match opcode:
             case Opcode.HELLO:
@@ -242,7 +241,7 @@ class Discord(Messenger):
         ref_id = None
         if (ref_message := data["referenced_message"]) is not None:
             ref_id = ref_message["id"]
-        
+
         m = Message(self.name, c_id, m_id, ref_id, username, text, attachments)
         hub.new_hub_message(m)
 
@@ -338,19 +337,16 @@ class Discord(Messenger):
         # XXX
         self.ws.close()
         self.start()
-        self.join()
 
     def get_nicknames(self, c_id) -> Dict[str, str]:
         log = self.log.bind(Action="Get Nicknames")
 
-        r = requests.get(
-            Endpoints.GET_CHANNEL.format(c_id), headers=self.headers
-        )
+        r = requests.get(Endpoints.GET_CHANNEL.format(c_id), headers=self.headers)
 
         guild_id = r.json()["guild_id"]
 
         r = requests.get(
-            Endpoints.LIST_GUILD_MEMBERS.format(self.guild_id), headers=self.headers
+            Endpoints.LIST_GUILD_MEMBERS.format(guild_id), headers=self.headers
         )
         nickname_dict: Dict[str, str] = {}
         guild_members: List[GuildMember] = orjson.loads(r.text)
@@ -376,5 +372,3 @@ class Discord(Messenger):
         self.thread.daemon = True
         self.thread.start()
 
-    def join(self) -> None:
-        self.thread.join()

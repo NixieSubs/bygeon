@@ -64,5 +64,7 @@ def main() -> None:
 
     for client in clients:
         client.start()
-    for client in clients:
-        client.join()
+
+    # XXX
+    while True:
+        pass

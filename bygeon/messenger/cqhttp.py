@@ -133,8 +133,7 @@ class CQHttp(Messenger):
     def reconnect(self) -> None:
         self.ws.close()
         self.start()
-        self.join()
-        ...
+
 
     def send_message(self, m: Message, c_id: str, ref_id=None) -> None:
         
@@ -180,5 +179,3 @@ class CQHttp(Messenger):
         self.thread.daemon = True
         self.thread.start()
 
-    def join(self) -> None:
-        self.thread.join()

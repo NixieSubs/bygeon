@@ -10,7 +10,7 @@ from pypika import Query, Column, Table
 from sqlite3 import Connection as SQLConn, Cursor as SQLCur, Row as SQLRow,connect
 
 from bygeon.message import Message
-from structlog import BoundLogger
+from structlog.typing import BindableLogger
 
 import bygeon.util as util
 import bygeon.logger as logger
@@ -18,7 +18,7 @@ import bygeon.logger as logger
 
 class Hub:
     links: Dict["Messenger", str]
-    log: BoundLogger
+    log: BindableLogger
 
     def __init__(self, name: str, keep_data=False):
         self.conn: SQLConn = connect(
