@@ -8,7 +8,7 @@ class AttachmentType(Enum):
 
 class Attachment(NamedTuple):
     name: str
-    type: str
+    type: str | None
     file_path: str
 
 class Message(NamedTuple):

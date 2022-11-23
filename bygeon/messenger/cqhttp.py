@@ -115,7 +115,6 @@ class CQHttp(Messenger):
                 file_path = util.download_to_cache(url, path, filename)
                 attachments.append(Attachment(fn, "image", file_path))
         m = Message(self.name, c_id, m_id, ref_id, author, text, attachments)
-        hub.new_entry(m)
         hub.new_hub_message(m)
 
     def recall_message(self, m_id: str, c_id: None | str) -> None:

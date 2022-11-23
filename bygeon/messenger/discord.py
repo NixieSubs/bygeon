@@ -40,8 +40,13 @@ class Discord(Messenger):
         self.guild_id = guild_id
         self.hubs = {}
 
-        self.nickname_dict = self.get_nicknames()
+        self.nickname_dict: Dict[str, Dict[str, str]] = {} 
         self.log = self.get_logger()
+
+    def add_hub(self, c_id: str , hub: Hub):
+        self.hubs[c_id] = hub
+
+        self.nickname_dict[c_id] = self.get_nicknames(c_id)
 
     @property
     def headers(self):
@@ -58,6 +63,7 @@ class Discord(Messenger):
         self.reconnect()
 
     def heartbeat(self, ws: WSApp, interval: int) -> None:
+        log = self.log.bind(Action="Heartbeat")
         payload = {
             "op": 1,
             "d": None,
@@ -65,6 +71,7 @@ class Discord(Messenger):
         while True:
             time.sleep(interval / 1000)
             if ws.sock is not None:
+                log.debug("Sending heartbeat")
                 ws.send(orjson.dumps(payload))
             else:
                 break
@@ -175,7 +182,7 @@ class Discord(Messenger):
         self.log.info("Received message: %s", text)
 
         author = data["author"]
-        username = self.nickname_dict.get(author["id"], author["username"])
+        username = self.nickname_dict[c_id].get(author["id"], author["username"])
         attachments: List[Attachment] = []
         for attachment in data["attachments"]:
             url = attachment["url"]
@@ -183,7 +190,7 @@ class Discord(Messenger):
             fn = attachment["id"]
             filename = f"{self.name}_{fn}"
 
-            full_type = attachment["content_type"]
+            full_type = attachment.get("content_type")
 
             path = self.generate_cache_path(self.name)
             file_path = util.download_to_cache(url, path, filename)
@@ -333,17 +340,28 @@ class Discord(Messenger):
         self.start()
         self.join()
 
-    def get_nicknames(self) -> Dict[str, str]:
+    def get_nicknames(self, c_id) -> Dict[str, str]:
+        log = self.log.bind(Action="Get Nicknames")
+
+        r = requests.get(
+            Endpoints.GET_CHANNEL.format(c_id), headers=self.headers
+        )
+
+        guild_id = r.json()["guild_id"]
+
         r = requests.get(
             Endpoints.LIST_GUILD_MEMBERS.format(self.guild_id), headers=self.headers
         )
         nickname_dict: Dict[str, str] = {}
         guild_members: List[GuildMember] = orjson.loads(r.text)
+        log.debug(str(guild_members))
 
         for member in guild_members:
             if member.get("nick") is None:
                 continue
             nickname_dict[member["user"]["id"]] = cast(str, member["nick"])
+
+        log.debug(str(nickname_dict))
         return nickname_dict
 
     def start(self) -> None:
