@@ -124,6 +124,7 @@ class Hub:
 class Messenger(Protocol):
     log: BindableLogger
     hubs: Dict[str, Hub]
+    ws: WSApp
 
     def get_logger(self):
         self.log = logger.log.bind(Client=self.name)

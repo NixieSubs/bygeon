@@ -1,9 +1,11 @@
 import tomli
+from time import sleep
 # from .messenger.slack import Slack
 from .messenger.discord import Discord
 from .messenger.cqhttp import CQHttp
 from .messenger.messenger import Messenger, Hub
 from typing import List
+
 
 
 def main() -> None:
@@ -66,4 +68,7 @@ def main() -> None:
 
     # XXX
     while True:
-        pass
+        sleep(1)
+        for client in clients:
+            if client.ws.keep_running == False:
+                client.start()
