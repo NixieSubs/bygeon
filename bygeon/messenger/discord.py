@@ -99,6 +99,8 @@ class Discord(Messenger):
                 return None
 
     def handle_dispatch(self, ws_message: WebsocketMessage) -> None:
+        self.log.debug(str(ws_message))
+
         t = ws_message["t"]
         self.sequence = ws_message["s"]
 
