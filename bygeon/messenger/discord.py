@@ -128,7 +128,8 @@ class Discord(Messenger):
         c_id = d["channel_id"]
         if (hub := self.hubs.get(c_id)) is None:
             return None
-
+        if d.get("mebed") is not None:
+            return None
         text = d["content"]
         username = d["author"]["username"]
         m_id = d["id"]
