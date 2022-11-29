@@ -69,6 +69,3 @@ def main() -> None:
     # XXX
     while True:
         sleep(1)
-        for client in clients:
-            if client.ws.keep_running == False:
-                client.start()

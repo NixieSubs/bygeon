@@ -77,6 +77,9 @@ class Discord(Messenger):
                 break
 
     def on_message(self, ws: WSApp, message: str) -> None:
+        log = self.log.bind(Action="OnMessage")
+
+        log.debug(message)
 
         ws_message: WebsocketMessage = orjson.loads(message)
         opcode = ws_message["op"]

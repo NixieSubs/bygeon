@@ -157,7 +157,8 @@ class Messenger(Protocol):
         self.log.info("Opened WebSocket connection")
 
     def _on_error(self, ws, e) -> None:
-        self.log.error(f"WebSocket encountered error: ", e)
+        self.log.error("WebSocket encountered error")
+        self.log.exception(e)
 
     def _on_close(self, ws, close_status_code, close_msg) -> None:
         self.log.error(f"WebSocket closed: {close_msg}")
